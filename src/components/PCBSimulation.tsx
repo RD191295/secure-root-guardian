@@ -1,13 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import PCBTrace from './PCBTrace';
 
-interface TraceInfo {
-  from: { x: number; y: number };
-  to: { x: number; y: number };
-  type: 'power' | 'data' | 'control';
-  label: string;
-}
-
 const PCBSimulation: React.FC = () => {
   const [activeTraces, setActiveTraces] = useState<number[]>([]);
 
@@ -21,7 +14,7 @@ const PCBSimulation: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const traces: TraceInfo[] = [
+  const traces = [
     { from: { x: 120, y: 130 }, to: { x: 300, y: 250 }, type: 'power', label: 'VCC' },
     { from: { x: 120, y: 380 }, to: { x: 300, y: 250 }, type: 'data', label: 'DATA-IN' },
     { from: { x: 680, y: 130 }, to: { x: 500, y: 250 }, type: 'control', label: 'CTRL' },
@@ -37,7 +30,7 @@ const PCBSimulation: React.FC = () => {
   return (
     <div className="flex justify-center items-center h-[600px] bg-slate-950">
       <svg width="800" height="500" viewBox="0 0 800 500">
-        {/* Glow filter for icons */}
+        {/* Glow filter for moving icons */}
         <defs>
           <filter id="glow">
             <feGaussianBlur stdDeviation="3" result="coloredBlur" />
@@ -47,11 +40,11 @@ const PCBSimulation: React.FC = () => {
             </feMerge>
           </filter>
 
-          {/* Pipeline path for animation */}
+          {/* Pipeline path for animateMotion */}
           <path id="pipeline-path" d="M100,250 L700,250" fill="none" />
         </defs>
 
-        {/* Transparent pipeline */}
+        {/* Transparent main pipeline */}
         <rect
           x="100"
           y="230"
@@ -70,7 +63,7 @@ const PCBSimulation: React.FC = () => {
           MAIN DATA PIPELINE
         </text>
 
-        {/* Animated icons moving along pipeline */}
+        {/* Animated icons inside pipeline */}
         {traces.map((trace, index) => {
           if (!activeTraces.includes(index)) return null;
           return (
@@ -95,7 +88,7 @@ const PCBSimulation: React.FC = () => {
         <rect x="640" y="100" width="80" height="60" rx="10" className="fill-blue-900 stroke-blue-500" />
         <rect x="640" y="350" width="80" height="60" rx="10" className="fill-yellow-900 stroke-yellow-500" />
 
-        {/* PCB Traces */}
+        {/* PCB Traces (fully transparent) */}
         {traces.map((trace, index) => (
           <PCBTrace
             key={index}
