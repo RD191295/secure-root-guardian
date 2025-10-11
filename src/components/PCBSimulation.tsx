@@ -1,14 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import PCBTrace from './PCBTrace';
 
+interface TraceInfo {
+  from: { x: number; y: number };
+  to: { x: number; y: number };
+  type: 'power' | 'data' | 'control';
+  label: string;
+}
+
 const PCBSimulation: React.FC = () => {
   const [activeTraces, setActiveTraces] = useState<number[]>([]);
 
-  // Simulate random data activation every 1 second
+  // Simulate random trace activation every second
   useEffect(() => {
     const interval = setInterval(() => {
-      const randomTraces = Array.from({ length: 3 }, (_, i) => i).filter(() =>
-        Math.random() > 0.4
+      const randomTraces = Array.from({ length: 4 }, (_, i) => i).filter(
+        () => Math.random() > 0.4
       );
       setActiveTraces(randomTraces);
     }, 1000);
@@ -16,18 +23,45 @@ const PCBSimulation: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Define traces connecting chips to pipeline
+  const traces: TraceInfo[] = [
+    { from: { x: 120, y: 130 }, to: { x: 300, y: 250 }, type: 'power', label: 'VCC' },
+    { from: { x: 120, y: 380 }, to: { x: 300, y: 250 }, type: 'data', label: 'DATA-IN' },
+    { from: { x: 680, y: 130 }, to: { x: 500, y: 250 }, type: 'control', label: 'CTRL' },
+    { from: { x: 680, y: 380 }, to: { x: 500, y: 250 }, type: 'data', label: 'OUT' },
+  ];
+
+  // Icon map
+  const iconMap: Record<string, string> = {
+    power: '⚡',
+    data: '💾',
+    control: '⚙️',
+  };
+
   return (
     <div className="flex justify-center items-center h-[600px] bg-slate-950">
       <svg width="800" height="500" viewBox="0 0 800 500">
-        {/* === Main Data Bus (pipeline) === */}
+        {/* --- Glow filter for icons --- */}
+        <defs>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="3.5" result="coloredBlur" />
+            <feMerge>
+              <feMergeNode in="coloredBlur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+
+        {/* --- Transparent main data pipeline --- */}
         <rect
           x="100"
           y="230"
           width="600"
           height="40"
           rx="20"
-          className="fill-slate-800 stroke-cyan-600 stroke-[2]"
+          className="fill-cyan-600/30 stroke-cyan-500 stroke-[2]"
         />
+
         <text
           x="400"
           y="255"
@@ -37,60 +71,52 @@ const PCBSimulation: React.FC = () => {
           MAIN DATA PIPELINE
         </text>
 
-        {/* Animated pulse traveling along pipeline */}
-        <circle r="8" fill="#22d3ee">
-          <animateMotion
-            dur="3s"
-            repeatCount="indefinite"
-            path="M100,250 L700,250"
-          />
-        </circle>
+        {/* --- Animated icons inside pipeline --- */}
+        {traces.map((trace, index) => {
+          if (!activeTraces.includes(index)) return null;
 
-        {/* === Example chips === */}
-        {/* Left chips sending data to pipeline */}
+          return (
+            <text
+              key={index}
+              fontSize="18"
+              filter="url(#glow)"
+            >
+              <textPath
+                href="#pipeline-path"
+                startOffset={`${Math.random() * 100}%`}
+                method="stretch"
+              >
+                {iconMap[trace.type]}
+              </textPath>
+            </text>
+          );
+        })}
+
+        {/* Pipeline path for textPath animation */}
+        <path
+          id="pipeline-path"
+          d="M100,250 L700,250"
+          fill="none"
+        />
+
+        {/* === Chips === */}
         <rect x="80" y="100" width="80" height="60" rx="10" className="fill-red-900 stroke-red-500" />
         <rect x="80" y="350" width="80" height="60" rx="10" className="fill-green-900 stroke-green-500" />
-
-        {/* Right chips receiving data */}
         <rect x="640" y="100" width="80" height="60" rx="10" className="fill-blue-900 stroke-blue-500" />
         <rect x="640" y="350" width="80" height="60" rx="10" className="fill-yellow-900 stroke-yellow-500" />
 
-        {/* === PCB traces connecting to pipeline === */}
-        <PCBTrace
-          from={{ x: 120, y: 130 }}
-          to={{ x: 300, y: 250 }}
-          isActive={activeTraces.includes(0)}
-          type="power"
-          label="VCC"
-          chipRadius={25}
-        />
-
-        <PCBTrace
-          from={{ x: 120, y: 380 }}
-          to={{ x: 300, y: 250 }}
-          isActive={activeTraces.includes(1)}
-          type="data"
-          label="DATA-IN"
-          chipRadius={25}
-        />
-
-        <PCBTrace
-          from={{ x: 680, y: 130 }}
-          to={{ x: 500, y: 250 }}
-          isActive={activeTraces.includes(2)}
-          type="control"
-          label="CTRL"
-          chipRadius={25}
-        />
-
-        <PCBTrace
-          from={{ x: 680, y: 380 }}
-          to={{ x: 500, y: 250 }}
-          isActive={activeTraces.includes(3)}
-          type="data"
-          label="OUT"
-          chipRadius={25}
-        />
+        {/* --- PCB traces --- */}
+        {traces.map((trace, index) => (
+          <PCBTrace
+            key={index}
+            from={trace.from}
+            to={trace.to}
+            isActive={activeTraces.includes(index)}
+            type={trace.type}
+            label={trace.label}
+            chipRadius={25}
+          />
+        ))}
       </svg>
     </div>
   );
