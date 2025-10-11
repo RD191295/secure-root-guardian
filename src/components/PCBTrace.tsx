@@ -4,12 +4,9 @@ interface PCBTraceProps {
   from: { x: number; y: number };
   to: { x: number; y: number };
   isActive: boolean;
-  type: 'power' | 'data' | 'control';
+  type: 'power' | 'data' | 'control' | 'key';
   label?: string;
-  chipRadius?: number;
-  dotCount?: number;
-  stageComplete?: boolean;
-  payload?: 'key' | 'data' | 'power'; // optional content type
+  progress?: number;
 }
 
 const PCBTrace: React.FC<PCBTraceProps> = ({
@@ -18,139 +15,107 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
   isActive,
   type,
   label,
-  chipRadius = 20,
-  dotCount = 3,
-  stageComplete = false,
-  payload,
+  progress = 0,
 }) => {
-  const [dots, setDots] = useState<number[]>([]);
-  const [dotSymbols, setDotSymbols] = useState<string[]>([]);
-  const [dotSpeeds, setDotSpeeds] = useState<number[]>([]);
-  const [opacity, setOpacity] = useState(1);
+  const [dotPosition, setDotPosition] = useState(0);
 
-  // Initialize moving packet positions and symbols
-  useEffect(() => {
-    setDots(Array.from({ length: dotCount }, (_, i) => i / dotCount));
-
-    // Set symbol based on payload or type
-    setDotSymbols(
-      Array.from({ length: dotCount }, () => {
-        if (payload === 'key') return '🔑';
-        if (type === 'power') return '⚡';
-        if (type === 'control') return '⚙️';
-        if (type === 'data') return String(Math.floor(Math.random() * 10));
-        return '?';
-      })
-    );
-
-    setDotSpeeds(
-      Array.from({ length: dotCount }, () =>
-        type === 'power' ? 0.015 : type === 'control' ? 0.01 : 0.008
-      )
-    );
-  }, [dotCount, type, payload]);
-
-  // Update numbers for data packets dynamically
-  useEffect(() => {
-    if (!isActive || stageComplete || type !== 'data') return;
-    const interval = setInterval(() => {
-      setDotSymbols(prev => prev.map(s => (payload === 'key' ? '🔑' : type === 'data' ? String(Math.floor(Math.random() * 10)) : s)));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [isActive, stageComplete, type, payload]);
-
-  const getColor = () => {
+  // Function to get trace color by type
+  const getTraceColor = () => {
     switch (type) {
-      case 'power': return 'red';
-      case 'data': return 'cyan';
-      case 'control': return 'yellow';
-      default: return 'gray';
+      case 'power':
+        return '#f87171'; // red
+      case 'data':
+        return '#22d3ee'; // cyan
+      case 'control':
+        return '#a78bfa'; // violet
+      case 'key':
+        return '#facc15'; // yellow
+      default:
+        return '#9ca3af'; // gray
     }
   };
 
-  const ctrlX = (from.x + to.x) / 2;
-  const ctrlY = from.y;
-
-  const getCoord = (t: number) => {
-    const x = (1 - t) * (1 - t) * from.x + 2 * (1 - t) * t * ctrlX + t * t * to.x;
-    const y = (1 - t) * (1 - t) * from.y + 2 * (1 - t) * t * ctrlY + t * t * to.y;
-    return { x, y };
+  // 🔧 Generate segmented PCB-style path
+  const generatePCBPath = (
+    from: { x: number; y: number },
+    to: { x: number; y: number }
+  ) => {
+    const offset = 30; // control how “wide” the route bends
+    const midX = (from.x + to.x) / 2;
+    const path = `
+      M${from.x},${from.y}
+      L${midX - offset},${from.y}
+      L${midX - offset},${to.y}
+      L${to.x},${to.y}
+    `;
+    return path;
   };
 
-  // Animate packets
+  const pathD = generatePCBPath(from, to);
+
+  // Animate data symbol flow
   useEffect(() => {
-    if (!isActive || stageComplete) return;
+    if (!isActive) return;
     const interval = setInterval(() => {
-      setDots(prev => prev.map((p, i) => (p + dotSpeeds[i]) % 1));
-    }, 16);
+      setDotPosition((prev) => (prev + 0.02) % 1);
+    }, 100);
     return () => clearInterval(interval);
-  }, [isActive, dotSpeeds, stageComplete]);
+  }, [isActive]);
 
-  // Fade out
-  useEffect(() => {
-    if (!stageComplete) {
-      setOpacity(1);
-      return;
-    }
-    let animFrame: number;
-    const fade = () => {
-      setOpacity(prev => {
-        if (prev <= 0) return 0;
-        animFrame = requestAnimationFrame(fade);
-        return prev - 0.02;
-      });
-    };
-    fade();
-    return () => cancelAnimationFrame(animFrame);
-  }, [stageComplete]);
+  // Hide trace when not active or completed
+  if (!isActive || progress === 1) return null;
 
-  if (!isActive && !stageComplete) return null;
-
-  const getPacketSize = () => (type === 'power' || payload === 'key' ? 20 : type === 'control' ? 16 : 12);
+  // Symbol based on type
+  const symbol =
+    type === 'power' ? '⚡' : type === 'data' ? '⬤' : type === 'control' ? '🔁' : '🔑';
 
   return (
-    <g opacity={opacity}>
-      {/* Trace path */}
+    <>
+      {/* Hollow trace (edge only) */}
       <path
-        d={`M${from.x},${from.y} Q${ctrlX},${ctrlY} ${to.x},${to.y}`}
-        stroke={getColor()}
-        strokeWidth={19}
+        d={pathD}
+        stroke={getTraceColor()}
+        strokeWidth={10}
         fill="none"
+        opacity={0.25}
         strokeLinecap="round"
         strokeLinejoin="round"
       />
 
-      {/* Data packets */}
-      {dots.map((t, i) => {
-        const { x, y } = getCoord(t);
-        return (
-          <text
-            key={i}
-            x={x}
-            y={y + 4}
-            fontSize={getPacketSize()}
-            fill={getColor()}
-            textAnchor="middle"
-            alignmentBaseline="middle"
-            opacity={0.8}
-          >
-            {dotSymbols[i]}
-          </text>
-        );
-      })}
-
-      {/* Label */}
-      {label && (
-        <text
-          x={(from.x + to.x) / 2}
-          y={(from.y + to.y) / 2 - 15}
-          className="fill-gray-300 text-xs font-mono"
-          textAnchor="middle"
-        >
-          {label}
-        </text>
+      {/* Animated data symbol */}
+      {isActive && (
+        <motion.circle
+          r={10}
+          fill={getTraceColor()}
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ duration: 2, repeat: Infinity }}
+        />
       )}
-    </g>
+
+      {/* Moving symbol (data packet / power icon) */}
+      <circle>
+        <animateMotion
+          dur="2s"
+          repeatCount="indefinite"
+          keyTimes="0;1"
+          keySplines="0.42 0 0.58 1"
+          calcMode="spline"
+        >
+          <mpath href={`#trace-${label}`} />
+        </animateMotion>
+      </circle>
+
+      <text
+        x={(from.x + to.x) / 2}
+        y={(from.y + to.y) / 2 - 10}
+        fill={getTraceColor()}
+        fontSize="14"
+        textAnchor="middle"
+      >
+        {symbol}
+      </text>
+    </>
   );
 };
 
