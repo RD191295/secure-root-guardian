@@ -3,12 +3,13 @@ import React, { useEffect, useState } from 'react';
 interface PCBTraceProps {
   from: { x: number; y: number };
   to: { x: number; y: number };
-  isActive: boolean;           // true → simulation running and trace visible
+  isActive: boolean;
   type: 'power' | 'data' | 'control';
   label?: string;
   chipRadius?: number;
   dotCount?: number;
-  stageComplete?: boolean;     // true → hide trace completely
+  stageComplete?: boolean;
+  mergePoint?: { x: number; y: number }; // optional merge visualization
 }
 
 const PCBTrace: React.FC<PCBTraceProps> = ({
@@ -20,21 +21,19 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
   chipRadius = 20,
   dotCount = 5,
   stageComplete = false,
+  mergePoint,
 }) => {
   const [dots, setDots] = useState<number[]>([]);
   const [dotSymbols, setDotSymbols] = useState<string[]>([]);
   const [dotSpeeds, setDotSpeeds] = useState<number[]>([]);
+  const [opacity, setOpacity] = useState(1);
 
-  // Initialize moving dots
+  // Initialize dots
   useEffect(() => {
     setDots(Array.from({ length: dotCount }, (_, i) => i / dotCount));
     setDotSymbols(
       Array.from({ length: dotCount }, () =>
-        type === 'power'
-          ? '⚡'
-          : type === 'control'
-          ? '⚙️'
-          : String(Math.floor(Math.random() * 10))
+        type === 'power' ? '⚡' : type === 'control' ? '⚙️' : String(Math.floor(Math.random() * 10))
       )
     );
     setDotSpeeds(
@@ -43,6 +42,15 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
       )
     );
   }, [dotCount, type]);
+
+  // Randomize data symbols every second
+  useEffect(() => {
+    if (!isActive || stageComplete || type !== 'data') return;
+    const interval = setInterval(() => {
+      setDotSymbols(prev => prev.map(() => String(Math.floor(Math.random() * 10))));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isActive, stageComplete, type]);
 
   const getColor = () => {
     switch (type) {
@@ -53,7 +61,6 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
     }
   };
 
-  // Control point for smooth curve (quadratic Bezier)
   const ctrlX = (from.x + to.x) / 2;
   const ctrlY = from.y;
 
@@ -63,7 +70,7 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
     return { x, y };
   };
 
-  // Animate dots if active and stage not complete
+  // Animate dots
   useEffect(() => {
     if (!isActive || stageComplete) return;
     const interval = setInterval(() => {
@@ -72,14 +79,30 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
     return () => clearInterval(interval);
   }, [isActive, dotSpeeds, stageComplete]);
 
-  // Hide trace entirely if stage complete or simulation not active
-  if (stageComplete || !isActive) return null;
+  // Fade-out when stage completes
+  useEffect(() => {
+    if (!stageComplete) {
+      setOpacity(1);
+      return;
+    }
+    let animFrame: number;
+    const fade = () => {
+      setOpacity(prev => {
+        if (prev <= 0) return 0;
+        animFrame = requestAnimationFrame(fade);
+        return prev - 0.02;
+      });
+    };
+    fade();
+    return () => cancelAnimationFrame(animFrame);
+  }, [stageComplete]);
 
-  const labelX = (from.x + to.x) / 2;
-  const labelY = (from.y + to.y) / 2;
+  if (!isActive && !stageComplete && opacity <= 0) return null;
+
+  const getPacketSize = () => (type === 'power' ? 20 : type === 'control' ? 16 : 12);
 
   return (
-    <g>
+    <g opacity={opacity}>
       {/* Big semi-transparent pipeline */}
       <path
         d={`M${from.x},${from.y} Q${ctrlX},${ctrlY} ${to.x},${to.y}`}
@@ -101,7 +124,7 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
         strokeLinejoin="round"
       />
 
-      {/* Moving symbols inside trace */}
+      {/* Moving symbols */}
       {dots.map((t, i) => {
         const { x, y } = getDotCoord(t);
         return (
@@ -109,7 +132,7 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
             key={i}
             x={x}
             y={y + 5}
-            fontSize={16}
+            fontSize={getPacketSize()}
             textAnchor="middle"
             alignmentBaseline="middle"
             fill={getColor()}
@@ -120,11 +143,22 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
         );
       })}
 
+      {/* Merge/collision point */}
+      {mergePoint && (
+        <circle
+          cx={mergePoint.x}
+          cy={mergePoint.y}
+          r={8}
+          fill="white"
+          opacity={0.8}
+        />
+      )}
+
       {/* Optional label */}
       {label && (
         <text
-          x={labelX}
-          y={labelY - 15}
+          x={(from.x + to.x) / 2}
+          y={(from.y + to.y) / 2 - 15}
           className="fill-gray-300 text-xs font-mono"
           textAnchor="middle"
         >
