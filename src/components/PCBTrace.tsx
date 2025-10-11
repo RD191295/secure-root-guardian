@@ -22,13 +22,20 @@ const PCBTrace: React.FC<PCBTraceProps> = ({ from, to, isActive, type, label }) 
     }
   };
 
+  // --- Midpoint and curvature for curved path ---
   const midX = (from.x + to.x) / 2;
   const midY = (from.y + to.y) / 2;
 
-  const pathD = `M ${from.x} ${from.y} L ${midX} ${from.y} L ${midX} ${to.y} L ${to.x} ${to.y}`;
+  // 🟢 Smooth Bezier curve instead of L-shape
+  const curvature = (to.y - from.y) * 0.3;
+  const pathD = `M ${from.x} ${from.y} Q ${midX} ${midY - curvature}, ${to.x} ${to.y}`;
+
+  // 🔄 Compute rotation angle of the trace for text alignment
+  const angle = Math.atan2(to.y - from.y, to.x - from.x) * (180 / Math.PI);
 
   return (
     <g className="pcb-trace">
+      {/* --- Main trace line --- */}
       <path
         d={pathD}
         className={`${getTraceColor()} transition-all duration-300`}
@@ -39,52 +46,39 @@ const PCBTrace: React.FC<PCBTraceProps> = ({ from, to, isActive, type, label }) 
         opacity={isActive ? 1 : 0.3}
       />
 
+      {/* --- Animated trace points --- */}
       {isActive && (
         <>
-          <circle
-            cx={from.x}
-            cy={from.y}
-            r="6"
-            className="fill-cyan-400 animate-pulse"
-          />
-
-          <circle
-            cx={to.x}
-            cy={to.y}
-            r="6"
-            className="fill-cyan-400"
-          />
+          <circle cx={from.x} cy={from.y} r="6" className="fill-cyan-400 animate-pulse" />
+          <circle cx={to.x} cy={to.y} r="6" className="fill-cyan-400" />
 
           <circle
             cx={midX}
             cy={midY}
             r="4"
-            className={`${type === 'data' ? 'fill-cyan-400' : type === 'power' ? 'fill-red-500' : 'fill-green-400'} animate-pulse`}
+            className={`${
+              type === 'data'
+                ? 'fill-cyan-400'
+                : type === 'power'
+                ? 'fill-red-500'
+                : 'fill-green-400'
+            } animate-pulse`}
           >
-            <animate
-              attributeName="r"
-              from="4"
-              to="8"
-              dur="1s"
-              repeatCount="indefinite"
-            />
-            <animate
-              attributeName="opacity"
-              from="1"
-              to="0"
-              dur="1s"
-              repeatCount="indefinite"
-            />
+            <animate attributeName="r" from="4" to="8" dur="1s" repeatCount="indefinite" />
+            <animate attributeName="opacity" from="1" to="0" dur="1s" repeatCount="indefinite" />
           </circle>
         </>
       )}
 
+      {/* --- Label aligned on trace and rotated 180° --- */}
       {label && isActive && (
         <text
           x={midX}
-          y={midY - 15}
-          className="fill-gray-300 text-xs font-mono"
+          y={midY}
+          className="fill-gray-300 text-xs font-mono select-none"
           textAnchor="middle"
+          alignmentBaseline="middle"
+          transform={`rotate(${angle + 180}, ${midX}, ${midY})`}
         >
           {label}
         </text>
