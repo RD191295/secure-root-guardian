@@ -52,7 +52,7 @@ export const MODULES: Module[] = [
     name: 'Crypto Engine',
     type: 'crypto',
     position: { x: 250, y: 250, z: 0 },
-    size: { width: 160, height: 140, depth: 20 },
+    size: { width: 160, height: 180, depth: 20 },
     color: 'from-emerald-800 to-emerald-600',
     isActive: false,
     description: 'Cryptographic accelerator'
@@ -72,7 +72,7 @@ export const MODULES: Module[] = [
     name: 'CPU Core',
     type: 'cpu',
     position: { x: 450, y: 250, z: 0 },
-    size: { width: 160, height: 140, depth: 20 },
+    size: { width: 160, height: 180, depth: 20 },
     color: 'from-blue-800 to-blue-600',
     isActive: false,
     description: 'Main processor'
