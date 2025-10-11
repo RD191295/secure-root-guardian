@@ -62,7 +62,7 @@ export const MODULES: Module[] = [
     name: 'Flash Memory',
     type: 'flash',
     position: { x: 50, y: 250, z: 0 },
-    size: { width: 140, height: 120, depth: 20 },
+    size: { width: 140, height: 190, depth: 20 },
     color: 'from-teal-800 to-teal-600',
     isActive: false,
     description: 'External Flash storage'
