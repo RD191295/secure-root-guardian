@@ -44,14 +44,17 @@ const PCBSimulation: React.FC = () => {
           <path id="pipeline-path" d="M100,250 L700,250" fill="none" />
         </defs>
 
-        {/* Transparent main pipeline */}
+        {/* ================= Pipeline Rectangle ================= */}
         <rect
           x="100"
           y="230"
           width="600"
           height="40"
           rx="20"
-          className="fill-cyan-600/30 stroke-cyan-500 stroke-[2]"
+          fill="cyan"
+          fillOpacity={0.3}       // ✅ Semi-transparent
+          stroke="cyan"
+          strokeWidth={2}
         />
 
         <text
@@ -63,13 +66,13 @@ const PCBSimulation: React.FC = () => {
           MAIN DATA PIPELINE
         </text>
 
-        {/* Animated icons inside pipeline */}
+        {/* ================= Animated Icons Moving Inside Pipeline ================= */}
         {traces.map((trace, index) => {
           if (!activeTraces.includes(index)) return null;
           return (
             <text
               key={index}
-              fontSize="18"
+              fontSize="20"
               filter="url(#glow)"
               textAnchor="middle"
               alignmentBaseline="middle"
@@ -82,13 +85,13 @@ const PCBSimulation: React.FC = () => {
           );
         })}
 
-        {/* Chips */}
-        <rect x="80" y="100" width="80" height="60" rx="10" className="fill-red-900 stroke-red-500" />
-        <rect x="80" y="350" width="80" height="60" rx="10" className="fill-green-900 stroke-green-500" />
-        <rect x="640" y="100" width="80" height="60" rx="10" className="fill-blue-900 stroke-blue-500" />
-        <rect x="640" y="350" width="80" height="60" rx="10" className="fill-yellow-900 stroke-yellow-500" />
+        {/* ================= Chips ================= */}
+        <rect x="80" y="100" width="80" height="60" rx="10" fill="#f87171" stroke="#ef4444" />
+        <rect x="80" y="350" width="80" height="60" rx="10" fill="#34d399" stroke="#10b981" />
+        <rect x="640" y="100" width="80" height="60" rx="10" fill="#60a5fa" stroke="#3b82f6" />
+        <rect x="640" y="350" width="80" height="60" rx="10" fill="#facc15" stroke="#eab308" />
 
-        {/* PCB Traces (fully transparent) */}
+        {/* ================= PCB Traces (Optional Faint Pulse) ================= */}
         {traces.map((trace, index) => (
           <PCBTrace
             key={index}
