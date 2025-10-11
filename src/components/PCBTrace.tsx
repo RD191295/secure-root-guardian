@@ -6,9 +6,17 @@ interface PCBTraceProps {
   isActive: boolean;
   type: 'power' | 'data' | 'control';
   label?: string;
+  chipRadius?: number; // 🆕 optional — half chip width or pad offset
 }
 
-const PCBTrace: React.FC<PCBTraceProps> = ({ from, to, isActive, type, label }) => {
+const PCBTrace: React.FC<PCBTraceProps> = ({
+  from,
+  to,
+  isActive,
+  type,
+  label,
+  chipRadius = 20, // default offset if not provided
+}) => {
   const getTraceColor = () => {
     switch (type) {
       case 'power':
@@ -22,20 +30,38 @@ const PCBTrace: React.FC<PCBTraceProps> = ({ from, to, isActive, type, label }) 
     }
   };
 
-  // --- Midpoint and curvature for curved path ---
-  const midX = (from.x + to.x) / 2;
-  const midY = (from.y + to.y) / 2;
+  // --- Compute direction vector ---
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const length = Math.sqrt(dx * dx + dy * dy);
 
-  // 🟢 Smooth Bezier curve instead of L-shape
-  const curvature = (to.y - from.y) * 0.3;
-  const pathD = `M ${from.x} ${from.y} Q ${midX} ${midY - curvature}, ${to.x} ${to.y}`;
+  // --- Unit vector (normalized direction) ---
+  const ux = dx / length;
+  const uy = dy / length;
 
-  // 🔄 Compute rotation angle of the trace for text alignment
-  const angle = Math.atan2(to.y - from.y, to.x - from.x) * (180 / Math.PI);
+  // 🟢 Offset start and end points outward by chipRadius
+  const startX = from.x + ux * chipRadius;
+  const startY = from.y + uy * chipRadius;
+  const endX = to.x - ux * chipRadius;
+  const endY = to.y - uy * chipRadius;
+
+  // --- Midpoint for animation & label ---
+  const midX = (startX + endX) / 2;
+  const midY = (startY + endY) / 2;
+
+  // --- Smooth Bezier curve ---
+  const curvature = 0.2;
+  const controlX = startX + (dx / 2) - dy * curvature;
+  const controlY = startY + (dy / 2) + dx * curvature;
+  const pathD = `M ${startX},${startY} Q ${controlX},${controlY} ${endX},${endY}`;
+
+  // --- Rotation for label ---
+  const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+  const rotation = angle + 180;
 
   return (
     <g className="pcb-trace">
-      {/* --- Main trace line --- */}
+      {/* Trace line */}
       <path
         d={pathD}
         className={`${getTraceColor()} transition-all duration-300`}
@@ -46,12 +72,13 @@ const PCBTrace: React.FC<PCBTraceProps> = ({ from, to, isActive, type, label }) 
         opacity={isActive ? 1 : 0.3}
       />
 
-      {/* --- Animated trace points --- */}
+      {/* Active connection highlights */}
       {isActive && (
         <>
-          <circle cx={from.x} cy={from.y} r="6" className="fill-cyan-400 animate-pulse" />
-          <circle cx={to.x} cy={to.y} r="6" className="fill-cyan-400" />
+          <circle cx={startX} cy={startY} r="4" className="fill-cyan-400 animate-pulse" />
+          <circle cx={endX} cy={endY} r="4" className="fill-cyan-400" />
 
+          {/* Mid pulse */}
           <circle
             cx={midX}
             cy={midY}
@@ -70,7 +97,7 @@ const PCBTrace: React.FC<PCBTraceProps> = ({ from, to, isActive, type, label }) 
         </>
       )}
 
-      {/* --- Label aligned on trace and rotated 180° --- */}
+      {/* Rotated label */}
       {label && isActive && (
         <text
           x={midX}
@@ -78,7 +105,7 @@ const PCBTrace: React.FC<PCBTraceProps> = ({ from, to, isActive, type, label }) 
           className="fill-gray-300 text-xs font-mono select-none"
           textAnchor="middle"
           alignmentBaseline="middle"
-          transform={`rotate(${angle + 180}, ${midX}, ${midY})`}
+          transform={`rotate(${rotation}, ${midX}, ${midY})`}
         >
           {label}
         </text>
