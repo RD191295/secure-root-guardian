@@ -18,11 +18,10 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
   chipRadius = 20,
 }) => {
   const getTraceColor = () => {
-    // subtle light-blue to integrate with pipeline
     return isActive ? 'stroke-cyan-400' : 'stroke-cyan-300/30';
   };
 
-  // Compute start/end points offset by chip radius
+  // Start/end offset for chip edge
   const dx = to.x - from.x;
   const dy = to.y - from.y;
   const length = Math.sqrt(dx * dx + dy * dy);
@@ -33,34 +32,34 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
   const endX = to.x - ux * chipRadius;
   const endY = to.y - uy * chipRadius;
 
-  // Orthogonal path (L-shaped: horizontal → vertical)
+  // Orthogonal L-shaped path (horizontal → vertical)
   const midX = startX;
   const midY = endY;
   const pathD = `M ${startX},${startY} L ${midX},${midY} L ${endX},${endY}`;
 
-  // Midpoint for label
+  // Midpoint for pulse and label
   const labelX = (startX + endX) / 2;
   const labelY = (startY + endY) / 2;
 
   return (
     <g className="pcb-trace">
-      {/* PCB trace line */}
+      {/* Thick pipeline-like trace */}
       <path
         d={pathD}
         className={`${getTraceColor()} transition-all duration-300`}
-        strokeWidth={isActive ? 3 : 2}
+        strokeWidth={isActive ? 12 : 8} // ✅ increased width for pipeline effect
         fill="none"
         strokeLinecap="round"
-        strokeLinejoin="round"
-        opacity={isActive ? 1 : 0.4}
+        strokeLinejoin="round" // round corners to look like a real pipeline
+        opacity={isActive ? 1 : 0.3}
       />
 
-      {/* Active pulse at mid */}
+      {/* Active pulse */}
       {isActive && (
         <circle
           cx={labelX}
           cy={labelY}
-          r="4"
+          r={6} // slightly bigger to match trace width
           className="fill-cyan-400 animate-pulse"
         />
       )}
@@ -69,7 +68,7 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
       {label && isActive && (
         <text
           x={labelX}
-          y={labelY - 10}
+          y={labelY - 15}
           className="fill-gray-300 text-xs font-mono"
           textAnchor="middle"
         >
