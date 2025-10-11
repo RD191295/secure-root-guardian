@@ -17,10 +17,10 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
   label,
   chipRadius = 20,
 }) => {
-  // Fully transparent trace
+  // Trace is fully transparent
   const getTraceColor = () => 'stroke-transparent';
 
-  // Start/end offset for chip edge
+  // Compute start/end offset for chip radius
   const dx = to.x - from.x;
   const dy = to.y - from.y;
   const length = Math.sqrt(dx * dx + dy * dy);
@@ -31,28 +31,28 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
   const endX = to.x - ux * chipRadius;
   const endY = to.y - uy * chipRadius;
 
-  // Orthogonal L-shaped path
+  // L-shaped path: horizontal → vertical
   const midX = startX;
   const midY = endY;
   const pathD = `M ${startX},${startY} L ${midX},${midY} L ${endX},${endY}`;
 
-  // Midpoint for optional pulse or label
+  // Midpoint for optional pulse
   const labelX = (startX + endX) / 2;
   const labelY = (startY + endY) / 2;
 
   return (
     <g className="pcb-trace">
-      {/* Trace line fully transparent */}
+      {/* Transparent trace path */}
       <path
         d={pathD}
-        className={getTraceColor()}
-        strokeWidth={12} // optional pipeline width
+        stroke={getTraceColor()}
+        strokeWidth={12} // optional width for pipeline impression
         fill="none"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
 
-      {/* Optional midpoint pulse (can also hide if you want full transparency) */}
+      {/* Active faint pulse at midpoint */}
       {isActive && (
         <circle
           cx={labelX}
@@ -60,6 +60,18 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
           r={6}
           className="fill-cyan-400 animate-pulse opacity-30"
         />
+      )}
+
+      {/* Optional label */}
+      {label && isActive && (
+        <text
+          x={labelX}
+          y={labelY - 15}
+          className="fill-gray-300 text-xs font-mono"
+          textAnchor="middle"
+        >
+          {label}
+        </text>
       )}
     </g>
   );
