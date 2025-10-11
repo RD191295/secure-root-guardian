@@ -5,42 +5,45 @@ import PCBTrace from "./PCBTrace";
 const PCBSimulation: React.FC = () => {
   const traces = [
     {
-      from: { x: 120, y: 130 },
-      to: { x: 300, y: 250 },
+      path: [
+        { x: 120, y: 130 },
+        { x: 200, y: 130 },
+        { x: 200, y: 250 },
+        { x: 300, y: 250 },
+      ],
       type: "power",
       label: "VCC",
       payload: "power",
     },
     {
-      from: { x: 120, y: 380 },
-      to: { x: 300, y: 250 },
+      path: [
+        { x: 120, y: 380 },
+        { x: 250, y: 380 },
+        { x: 250, y: 250 },
+        { x: 300, y: 250 },
+      ],
       type: "data",
       label: "DATA-IN",
       payload: "data",
     },
     {
-      from: { x: 680, y: 130 },
-      to: { x: 500, y: 250 },
+      path: [
+        { x: 680, y: 130 },
+        { x: 500, y: 130 },
+        { x: 500, y: 250 },
+      ],
       type: "control",
       label: "CTRL",
       payload: "key",
     },
-    {
-      from: { x: 680, y: 380 },
-      to: { x: 500, y: 250 },
-      type: "data",
-      label: "OUT",
-      payload: "data",
-    },
   ];
 
   const [isPlaying, setIsPlaying] = useState(false);
-  const [traceStages, setTraceStages] = useState([false, false, false, false]);
+  const [traceStages, setTraceStages] = useState([false, false, false]);
 
   const play = () => setIsPlaying(true);
   const pause = () => setIsPlaying(false);
 
-  // Sequential stage control
   useEffect(() => {
     if (!isPlaying) return;
     let i = 0;
@@ -52,10 +55,8 @@ const PCBSimulation: React.FC = () => {
           return newStages;
         });
         i++;
-      } else {
-        clearInterval(interval);
-      }
-    }, 4000);
+      } else clearInterval(interval);
+    }, 3000);
     return () => clearInterval(interval);
   }, [isPlaying]);
 
@@ -65,27 +66,24 @@ const PCBSimulation: React.FC = () => {
         onClick={isPlaying ? pause : play}
         className="p-4 rounded-lg bg-blue-600 text-white hover:bg-blue-500 transition-colors mb-4"
       >
-        {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
+        {isPlaying ? <Pause /> : <Play />}
       </button>
 
       <svg width="800" height="500" viewBox="0 0 800 500">
-        {/* Chips */}
+        {/* Example chips */}
         <rect x="80" y="100" width="80" height="60" rx="10" fill="#f87171" />
         <rect x="80" y="350" width="80" height="60" rx="10" fill="#34d399" />
         <rect x="640" y="100" width="80" height="60" rx="10" fill="#60a5fa" />
-        <rect x="640" y="350" width="80" height="60" rx="10" fill="#facc15" />
 
-        {/* Traces */}
         {traces.map((trace, i) => (
           <PCBTrace
             key={i}
-            from={trace.from}
-            to={trace.to}
-            isActive={isPlaying && !traceStages[i]}
-            stageComplete={traceStages[i]}
+            path={trace.path}
             type={trace.type}
             label={trace.label}
-            payload={trace.payload as any}
+            isActive={isPlaying && !traceStages[i]}
+            stageComplete={traceStages[i]}
+            payload={trace.payload}
           />
         ))}
       </svg>
