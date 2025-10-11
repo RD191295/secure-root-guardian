@@ -4,6 +4,7 @@ import PCBTrace from './PCBTrace';
 const PCBSimulation: React.FC = () => {
   const [activeTraces, setActiveTraces] = useState<number[]>([]);
 
+  // Simulate random active traces
   useEffect(() => {
     const interval = setInterval(() => {
       const randomTraces = Array.from({ length: 4 }, (_, i) => i).filter(
@@ -52,7 +53,7 @@ const PCBSimulation: React.FC = () => {
           height="40"
           rx="20"
           fill="cyan"
-          fillOpacity={0.3}       // ✅ Semi-transparent
+          fillOpacity={0.3} // semi-transparent pipeline
           stroke="cyan"
           strokeWidth={2}
         />
@@ -91,7 +92,7 @@ const PCBSimulation: React.FC = () => {
         <rect x="640" y="100" width="80" height="60" rx="10" fill="#60a5fa" stroke="#3b82f6" />
         <rect x="640" y="350" width="80" height="60" rx="10" fill="#facc15" stroke="#eab308" />
 
-        {/* ================= PCB Traces (Optional Faint Pulse) ================= */}
+        {/* ================= PCB Traces (Fully Transparent + faint pulse) ================= */}
         {traces.map((trace, index) => (
           <PCBTrace
             key={index}
