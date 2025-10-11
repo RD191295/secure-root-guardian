@@ -22,11 +22,20 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
   speed = 0.01,
 }) => {
   const [dots, setDots] = useState<number[]>([]);
+  const [dotSymbols, setDotSymbols] = useState<string[]>([]);
 
-  // initialize dots evenly spaced
+  // Initialize dot positions and symbols
   useEffect(() => {
     setDots(Array.from({ length: dotCount }, (_, i) => i / dotCount));
-  }, [dotCount]);
+    const symbols = Array.from({ length: dotCount }, () =>
+      type === 'power'
+        ? '⚡'
+        : type === 'control'
+        ? '⚙️'
+        : String(Math.floor(Math.random() * 10))
+    );
+    setDotSymbols(symbols);
+  }, [dotCount, type]);
 
   const getColor = () => {
     switch (type) {
@@ -37,6 +46,7 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
     }
   };
 
+  // Compute L-shaped path
   const dx = to.x - from.x;
   const dy = to.y - from.y;
   const length = Math.sqrt(dx*dx + dy*dy);
@@ -62,32 +72,58 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
     }
   };
 
-  // animate dots continuously
+  // Animate dots
   useEffect(() => {
     if (!isActive) return;
-    const id = setInterval(() => {
+    const interval = setInterval(() => {
       setDots(prev => prev.map(p => (p + speed) % 1));
-    }, 16); // ~60fps
-    return () => clearInterval(id);
+    }, 16);
+    return () => clearInterval(interval);
   }, [isActive, speed]);
 
   const labelX = (startX + endX)/2;
   const labelY = (startY + endY)/2;
 
   return (
-    <g>
-      {/* Outline */}
-      <path d={pathD} stroke="#555" strokeWidth={8} fill="none" strokeLinecap="round" strokeLinejoin="round" />
-      {/* Main trace */}
-      <path d={pathD} stroke={getColor()} strokeWidth={4} fill="none" strokeLinecap="round" strokeLinejoin="round" />
-      {/* Moving dots */}
+    <g className="pcb-trace">
+      {/* Hollow trace */}
+      <path
+        d={pathD}
+        stroke="#555555"
+        strokeWidth={6}
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+
+      {/* Moving symbols */}
       {isActive && dots.map((t,i) => {
-        const {x,y} = getDotCoord(t);
-        return <circle key={i} cx={x} cy={y} r={5} fill={getColor()} className="opacity-70" />;
+        const {x, y} = getDotCoord(t);
+        return (
+          <text
+            key={i}
+            x={x}
+            y={y+5}
+            fontSize={14}
+            textAnchor="middle"
+            alignmentBaseline="middle"
+            fill={getColor()}
+          >
+            {dotSymbols[i]}
+          </text>
+        );
       })}
+
       {/* Label */}
       {label && (
-        <text x={labelX} y={labelY-15} className="fill-gray-300 text-xs font-mono" textAnchor="middle">{label}</text>
+        <text
+          x={labelX}
+          y={labelY-15}
+          className="fill-gray-300 text-xs font-mono"
+          textAnchor="middle"
+        >
+          {label}
+        </text>
       )}
     </g>
   );
