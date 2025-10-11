@@ -9,7 +9,6 @@ interface PCBTraceProps {
   chipRadius?: number;
   dotCount?: number;
   stageComplete?: boolean;
-  mergePoint?: { x: number; y: number }; // optional merge visualization
 }
 
 const PCBTrace: React.FC<PCBTraceProps> = ({
@@ -19,67 +18,27 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
   type,
   label,
   chipRadius = 20,
-  dotCount = 5,
+  dotCount = 3,
   stageComplete = false,
-  mergePoint,
 }) => {
   const [dots, setDots] = useState<number[]>([]);
-  const [dotSymbols, setDotSymbols] = useState<string[]>([]);
-  const [dotSpeeds, setDotSpeeds] = useState<number[]>([]);
   const [opacity, setOpacity] = useState(1);
 
-  // Initialize dots
+  // Initialize moving arrows positions (t = 0-1)
   useEffect(() => {
     setDots(Array.from({ length: dotCount }, (_, i) => i / dotCount));
-    setDotSymbols(
-      Array.from({ length: dotCount }, () =>
-        type === 'power' ? '⚡' : type === 'control' ? '⚙️' : String(Math.floor(Math.random() * 10))
-      )
-    );
-    setDotSpeeds(
-      Array.from({ length: dotCount }, () =>
-        type === 'power' ? 0.015 : type === 'control' ? 0.01 : 0.008
-      )
-    );
-  }, [dotCount, type]);
-
-  // Randomize data symbols every second
-  useEffect(() => {
-    if (!isActive || stageComplete || type !== 'data') return;
-    const interval = setInterval(() => {
-      setDotSymbols(prev => prev.map(() => String(Math.floor(Math.random() * 10))));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [isActive, stageComplete, type]);
-
-  const getColor = () => {
-    switch (type) {
-      case 'power': return 'red';
-      case 'data': return 'cyan';
-      case 'control': return 'yellow';
-      default: return 'gray';
-    }
-  };
-
-  const ctrlX = (from.x + to.x) / 2;
-  const ctrlY = from.y;
-
-  const getDotCoord = (t: number) => {
-    const x = (1 - t) * (1 - t) * from.x + 2 * (1 - t) * t * ctrlX + t * t * to.x;
-    const y = (1 - t) * (1 - t) * from.y + 2 * (1 - t) * t * ctrlY + t * t * to.y;
-    return { x, y };
-  };
+  }, [dotCount]);
 
   // Animate dots
   useEffect(() => {
     if (!isActive || stageComplete) return;
     const interval = setInterval(() => {
-      setDots(prev => prev.map((p, i) => (p + dotSpeeds[i]) % 1));
+      setDots(prev => prev.map(p => (p + 0.01) % 1));
     }, 16);
     return () => clearInterval(interval);
-  }, [isActive, dotSpeeds, stageComplete]);
+  }, [isActive, stageComplete]);
 
-  // Fade-out when stage completes
+  // Fade out after stage completes
   useEffect(() => {
     if (!stageComplete) {
       setOpacity(1);
@@ -100,22 +59,31 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
   // Hide completely if not active and not fading
   if (!isActive && !stageComplete) return null;
 
-  const getPacketSize = () => (type === 'power' ? 20 : type === 'control' ? 16 : 12);
+  const getColor = () => {
+    switch (type) {
+      case 'power': return 'red';
+      case 'data': return 'cyan';
+      case 'control': return 'yellow';
+      default: return 'gray';
+    }
+  };
+
+  const ctrlX = (from.x + to.x) / 2;
+  const ctrlY = from.y;
+
+  // Get coordinates along a quadratic curve
+  const getCoord = (t: number) => {
+    const x = (1 - t) * (1 - t) * from.x + 2 * (1 - t) * t * ctrlX + t * t * to.x;
+    const y = (1 - t) * (1 - t) * from.y + 2 * (1 - t) * t * ctrlY + t * t * to.y;
+    return { x, y };
+  };
+
+  // Small arrow symbol
+  const arrowSymbol = '▶';
 
   return (
     <g opacity={opacity}>
-      {/* Big semi-transparent pipeline */}
-      <path
-        d={`M${from.x},${from.y} Q${ctrlX},${ctrlY} ${to.x},${to.y}`}
-        stroke={getColor()}
-        strokeWidth={20}
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        opacity={0.2}
-      />
-
-      {/* Hollow trace outline */}
+      {/* Trace path */}
       <path
         d={`M${from.x},${from.y} Q${ctrlX},${ctrlY} ${to.x},${to.y}`}
         stroke={getColor()}
@@ -125,35 +93,24 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
         strokeLinejoin="round"
       />
 
-      {/* Moving symbols */}
+      {/* Flow arrows along trace */}
       {dots.map((t, i) => {
-        const { x, y } = getDotCoord(t);
+        const { x, y } = getCoord(t);
         return (
           <text
             key={i}
             x={x}
-            y={y + 5}
-            fontSize={getPacketSize()}
+            y={y + 4} // adjust vertical alignment
+            fontSize={14}
+            fill={getColor()}
             textAnchor="middle"
             alignmentBaseline="middle"
-            fill={getColor()}
-            opacity={0.6 + 0.4 * Math.sin(t * Math.PI)}
+            opacity={0.7}
           >
-            {dotSymbols[i]}
+            {arrowSymbol}
           </text>
         );
       })}
-
-      {/* Merge/collision point */}
-      {mergePoint && (
-        <circle
-          cx={mergePoint.x}
-          cy={mergePoint.y}
-          r={8}
-          fill="white"
-          opacity={0.8}
-        />
-      )}
 
       {/* Optional label */}
       {label && (
