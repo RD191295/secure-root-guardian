@@ -7,8 +7,8 @@ interface PCBTraceProps {
   type: 'power' | 'data' | 'control';
   label?: string;
   chipRadius?: number;
-  dotCount?: number; // number of moving dots
-  speed?: number;    // animation speed
+  dotCount?: number;
+  speed?: number;
 }
 
 const PCBTrace: React.FC<PCBTraceProps> = ({
@@ -21,14 +21,14 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
   dotCount = 5,
   speed = 0.01,
 }) => {
-  const [dotPositions, setDotPositions] = useState<number[]>([]);
+  const [dots, setDots] = useState<number[]>([]);
 
-  // Initialize dots with staggered starting positions
+  // initialize dots evenly spaced
   useEffect(() => {
-    setDotPositions(Array.from({ length: dotCount }, (_, i) => i / dotCount));
+    setDots(Array.from({ length: dotCount }, (_, i) => i / dotCount));
   }, [dotCount]);
 
-  const getTraceColor = () => {
+  const getColor = () => {
     switch (type) {
       case 'power': return 'red';
       case 'data': return 'cyan';
@@ -37,81 +37,57 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
     }
   };
 
-  // Compute L-shaped path
   const dx = to.x - from.x;
   const dy = to.y - from.y;
-  const length = Math.sqrt(dx * dx + dy * dy);
+  const length = Math.sqrt(dx*dx + dy*dy);
   const ux = dx / length;
   const uy = dy / length;
 
-  const startX = from.x + ux * chipRadius;
-  const startY = from.y + uy * chipRadius;
-  const endX = to.x - ux * chipRadius;
-  const endY = to.y - uy * chipRadius;
+  const startX = from.x + ux*chipRadius;
+  const startY = from.y + uy*chipRadius;
+  const endX = to.x - ux*chipRadius;
+  const endY = to.y - uy*chipRadius;
 
   const midX = startX;
   const midY = endY;
   const pathD = `M ${startX},${startY} L ${midX},${midY} L ${endX},${endY}`;
 
-  // Function to get dot coordinates along L-shaped path
   const getDotCoord = (t: number) => {
     if (t < 0.5) {
-      const p = t * 2;
-      return { x: startX + (midX - startX) * p, y: startY + (midY - startY) * p };
+      const p = t*2;
+      return { x: startX + (midX - startX)*p, y: startY + (midY - startY)*p };
     } else {
-      const p = (t - 0.5) * 2;
-      return { x: midX + (endX - midX) * p, y: midY + (endY - midY) * p };
+      const p = (t-0.5)*2;
+      return { x: midX + (endX - midX)*p, y: midY + (endY - midY)*p };
     }
   };
 
-  // Animate dots
+  // animate dots continuously
   useEffect(() => {
     if (!isActive) return;
-    const interval = setInterval(() => {
-      setDotPositions((prev) => prev.map((p) => (p + speed) % 1));
+    const id = setInterval(() => {
+      setDots(prev => prev.map(p => (p + speed) % 1));
     }, 16); // ~60fps
-    return () => clearInterval(interval);
+    return () => clearInterval(id);
   }, [isActive, speed]);
 
-  const labelX = (startX + endX) / 2;
-  const labelY = (startY + endY) / 2;
+  const labelX = (startX + endX)/2;
+  const labelY = (startY + endY)/2;
 
   return (
-    <g className="pcb-trace">
-      {/* Stock outline */}
-      <path
-        d={pathD}
-        stroke="#555555"
-        strokeWidth={8}
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+    <g>
+      {/* Outline */}
+      <path d={pathD} stroke="#555" strokeWidth={8} fill="none" strokeLinecap="round" strokeLinejoin="round" />
       {/* Main trace */}
-      <path
-        d={pathD}
-        stroke={getTraceColor()}
-        strokeWidth={4}
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <path d={pathD} stroke={getColor()} strokeWidth={4} fill="none" strokeLinecap="round" strokeLinejoin="round" />
       {/* Moving dots */}
-      {isActive &&
-        dotPositions.map((t, i) => {
-          const { x, y } = getDotCoord(t);
-          return <circle key={i} cx={x} cy={y} r={5} fill={getTraceColor()} className="opacity-70" />;
-        })}
+      {isActive && dots.map((t,i) => {
+        const {x,y} = getDotCoord(t);
+        return <circle key={i} cx={x} cy={y} r={5} fill={getColor()} className="opacity-70" />;
+      })}
       {/* Label */}
-      {label && isActive && (
-        <text
-          x={labelX}
-          y={labelY - 15}
-          className="fill-gray-300 text-xs font-mono"
-          textAnchor="middle"
-        >
-          {label}
-        </text>
+      {label && (
+        <text x={labelX} y={labelY-15} className="fill-gray-300 text-xs font-mono" textAnchor="middle">{label}</text>
       )}
     </g>
   );
