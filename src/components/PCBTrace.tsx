@@ -97,7 +97,8 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
     return () => cancelAnimationFrame(animFrame);
   }, [stageComplete]);
 
-  if (!isActive && !stageComplete && opacity <= 0) return null;
+  // Hide completely if not active and not fading
+  if (!isActive && !stageComplete) return null;
 
   const getPacketSize = () => (type === 'power' ? 20 : type === 'control' ? 16 : 12);
 
