@@ -112,7 +112,7 @@ const PCBSimulation: React.FC = () => {
         {traces.map((trace, idx) => (
           <PCBTrace
             key={idx}
-            points={trace.points}
+            points={trace.points}      // Use points array
             isActive={trace.isActive}
             type={trace.type}
             label={trace.label}
