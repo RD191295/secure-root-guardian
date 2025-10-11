@@ -71,7 +71,7 @@ export const MODULES: Module[] = [
     id: 'cpu',
     name: 'CPU Core',
     type: 'cpu',
-    position: { x: 320, y: 250, z: 0 },
+    position: { x: 320, y: 320, z: 0 },
     size: { width: 160, height: 180, depth: 20 },
     color: 'from-blue-800 to-blue-600',
     isActive: false,
