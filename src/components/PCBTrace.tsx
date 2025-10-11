@@ -3,8 +3,8 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 type Point = { x: number; y: number };
 
 interface PCBTraceProps {
-  id?: string; // optional unique id; if not provided one is generated
-  // either provide `path` (array of waypoints) OR `from` + `to`
+  id?: string;
+  // Either pass `path` (waypoints) OR `from` + `to`
   path?: Point[];
   from?: Point;
   to?: Point;
@@ -31,16 +31,14 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
   stageComplete = false,
   payload,
 }) => {
-  // ensure we always have a unique id for textPath references
   const internalIdRef = useRef(id ?? randId());
   const pathId = internalIdRef.current;
 
-  // build waypoints: prefer path prop, otherwise construct from->to L-shaped waypoints
+  // Build waypoints safely: prefer path prop, otherwise build simple L-shaped from->to
   const waypoints: Point[] = useMemo(() => {
     if (Array.isArray(path) && path.length >= 2) return path;
     if (from && to) {
       const midX = Math.round((from.x + to.x) / 2);
-      // L-shaped route with a horizontal-then-vertical (you can customize)
       return [
         { x: from.x, y: from.y },
         { x: midX, y: from.y },
@@ -48,23 +46,15 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
         { x: to.x, y: to.y },
       ];
     }
-    // fallback single point to avoid .map on undefined
+    // fallback to a tiny path to avoid undefined .map usage
     return [{ x: 0, y: 0 }, { x: 0, y: 0 }];
   }, [path, from, to]);
 
-  // create SVG path d string from waypoints (straight segments)
-  const pathD = useMemo(() => {
-    return waypoints.map((p, i) => (i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`)).join(" ");
-  }, [waypoints]);
-
-  // packet symbol based on payload/type
-  const getSymbol = () => {
-    if (payload === "key") return "🔑";
-    if (payload === "power" || type === "power") return "⚡";
-    if (type === "control") return "⚙️";
-    // data default: show small dot or number (numbers handled below)
-    return "●";
-  };
+  // Convert waypoints to SVG path d
+  const pathD = useMemo(
+    () => waypoints.map((p, i) => (i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`)).join(" "),
+    [waypoints]
+  );
 
   const getColor = () => {
     switch (type) {
@@ -81,7 +71,7 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
     }
   };
 
-  // safe initialization for dots/symbols/speeds
+  // initialize offsets and symbols defensively
   const [offsets, setOffsets] = useState<number[]>(
     () => Array.from({ length: dotCount }, (_, i) => (i / dotCount) * 100)
   );
@@ -97,19 +87,17 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
     )
   );
 
-  // update data symbols periodically for data traces (random numbers)
+  // randomize data symbols periodically for data traces
   useEffect(() => {
     if (!isActive || stageComplete) return;
     if (type !== "data" && payload !== "data") return;
     const t = setInterval(() => {
-      setSymbols((prev) =>
-        prev.map(() => String(Math.floor(Math.random() * 10)))
-      );
+      setSymbols((prev) => prev.map(() => String(Math.floor(Math.random() * 10))));
     }, 900);
     return () => clearInterval(t);
   }, [isActive, stageComplete, type, payload]);
 
-  // animate packet movement along the path using startOffset percentage (0-100)
+  // animate offsets when active
   useEffect(() => {
     if (!isActive || stageComplete) return;
     const interval = setInterval(() => {
@@ -118,7 +106,7 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
     return () => clearInterval(interval);
   }, [isActive, stageComplete]);
 
-  // fade out when stageComplete; use local opacity state
+  // fade out on stageComplete
   const [opacity, setOpacity] = useState<number>(1);
   useEffect(() => {
     if (!stageComplete) {
@@ -141,21 +129,15 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
     return () => cancelAnimationFrame(raf);
   }, [stageComplete]);
 
-  // hide if not active and not fading
-  if (!isActive && !stageComplete && opacity === 0) return null;
+  // hide early if not active and not in fade
   if (!isActive && !stageComplete) return null;
 
-  // helper to compute a point along the total path by percentage.
-  // We approximate by interpolating segments proportionally to segment length.
+  // helper: get point along multi-segment path by percent (0-100)
   const getPointAtPercent = (pct: number) => {
-    // clamp
     const p = Math.max(0, Math.min(100, pct));
-    // build segments lengths
     const segs = waypoints.slice(1).map((pt, i) => {
       const prev = waypoints[i];
-      const dx = pt.x - prev.x;
-      const dy = pt.y - prev.y;
-      return Math.hypot(dx, dy);
+      return Math.hypot(pt.x - prev.x, pt.y - prev.y);
     });
     const total = segs.reduce((a, b) => a + b, 0) || 1;
     const target = (p / 100) * total;
@@ -167,22 +149,21 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
         const next = waypoints[i + 1];
         const remain = target - acc;
         const t = segLen === 0 ? 0 : remain / segLen;
-        const x = prev.x + (next.x - prev.x) * t;
-        const y = prev.y + (next.y - prev.y) * t;
-        return { x, y };
+        return {
+          x: prev.x + (next.x - prev.x) * t,
+          y: prev.y + (next.y - prev.y) * t,
+        };
       }
       acc += segLen;
     }
-    // fallback to last point
-    const last = waypoints[waypoints.length - 1];
-    return { x: last.x, y: last.y };
+    return waypoints[waypoints.length - 1];
   };
 
   const packetSize = payload === "key" || type === "power" ? 18 : type === "control" ? 16 : 12;
 
   return (
     <g opacity={opacity}>
-      {/* wide faint background "pipe" */}
+      {/* thick semi-transparent pipeline */}
       <path
         d={pathD}
         stroke={getColor()}
@@ -202,10 +183,17 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
         strokeLinejoin="round"
       />
 
-      {/* moving packet symbols placed via computed positions (safe, no textPath lookup) */}
+      {/* moving packets */}
       {offsets.map((off, i) => {
         const pt = getPointAtPercent(off);
-        const sym = payload === "key" ? "🔑" : payload === "power" ? "⚡" : type === "control" ? "⚙️" : symbols[i] ?? getSymbol();
+        const sym =
+          payload === "key"
+            ? "🔑"
+            : payload === "power"
+            ? "⚡"
+            : type === "control"
+            ? "⚙️"
+            : symbols[i] ?? "●";
         return (
           <text
             key={i}
@@ -215,15 +203,15 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
             textAnchor="middle"
             alignmentBaseline="middle"
             fill={getColor()}
+            opacity={0.9}
             style={{ pointerEvents: "none" }}
-            opacity={0.8}
           >
             {sym}
           </text>
         );
       })}
 
-      {/* optional label centered on bounding box of waypoints */}
+      {/* label (centroid of bbox) */}
       {label && (() => {
         const xs = waypoints.map((w) => w.x);
         const ys = waypoints.map((w) => w.y);
