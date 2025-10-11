@@ -32,7 +32,7 @@ export const MODULES: Module[] = [
     name: 'Boot ROM',
     type: 'rom',
     position: { x: 320, y: 50, z: 0 },
-    size: { width: 140, height: 120, depth: 20 },
+    size: { width: 140, height: 180, depth: 20 },
     color: 'from-blue-800 to-blue-600',
     isActive: false,
     description: 'Boot ROM with secure code'
