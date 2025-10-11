@@ -11,7 +11,6 @@ interface TraceInfo {
 const PCBSimulation: React.FC = () => {
   const [activeTraces, setActiveTraces] = useState<number[]>([]);
 
-  // Simulate random trace activation every second
   useEffect(() => {
     const interval = setInterval(() => {
       const randomTraces = Array.from({ length: 4 }, (_, i) => i).filter(
@@ -19,11 +18,9 @@ const PCBSimulation: React.FC = () => {
       );
       setActiveTraces(randomTraces);
     }, 1000);
-
     return () => clearInterval(interval);
   }, []);
 
-  // Define traces connecting chips to pipeline
   const traces: TraceInfo[] = [
     { from: { x: 120, y: 130 }, to: { x: 300, y: 250 }, type: 'power', label: 'VCC' },
     { from: { x: 120, y: 380 }, to: { x: 300, y: 250 }, type: 'data', label: 'DATA-IN' },
@@ -31,7 +28,6 @@ const PCBSimulation: React.FC = () => {
     { from: { x: 680, y: 380 }, to: { x: 500, y: 250 }, type: 'data', label: 'OUT' },
   ];
 
-  // Icon map
   const iconMap: Record<string, string> = {
     power: '⚡',
     data: '💾',
@@ -41,18 +37,21 @@ const PCBSimulation: React.FC = () => {
   return (
     <div className="flex justify-center items-center h-[600px] bg-slate-950">
       <svg width="800" height="500" viewBox="0 0 800 500">
-        {/* --- Glow filter for icons --- */}
+        {/* Glow filter for icons */}
         <defs>
           <filter id="glow">
-            <feGaussianBlur stdDeviation="3.5" result="coloredBlur" />
+            <feGaussianBlur stdDeviation="3" result="coloredBlur" />
             <feMerge>
               <feMergeNode in="coloredBlur" />
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
+
+          {/* Pipeline path for animation */}
+          <path id="pipeline-path" d="M100,250 L700,250" fill="none" />
         </defs>
 
-        {/* --- Transparent main data pipeline --- */}
+        {/* Transparent pipeline */}
         <rect
           x="100"
           y="230"
@@ -71,41 +70,32 @@ const PCBSimulation: React.FC = () => {
           MAIN DATA PIPELINE
         </text>
 
-        {/* --- Animated icons inside pipeline --- */}
+        {/* Animated icons moving along pipeline */}
         {traces.map((trace, index) => {
           if (!activeTraces.includes(index)) return null;
-
           return (
             <text
               key={index}
               fontSize="18"
               filter="url(#glow)"
+              textAnchor="middle"
+              alignmentBaseline="middle"
             >
-              <textPath
-                href="#pipeline-path"
-                startOffset={`${Math.random() * 100}%`}
-                method="stretch"
-              >
-                {iconMap[trace.type]}
-              </textPath>
+              <animateMotion dur={`${2 + Math.random() * 2}s`} repeatCount="indefinite">
+                <mpath href="#pipeline-path" />
+              </animateMotion>
+              {iconMap[trace.type]}
             </text>
           );
         })}
 
-        {/* Pipeline path for textPath animation */}
-        <path
-          id="pipeline-path"
-          d="M100,250 L700,250"
-          fill="none"
-        />
-
-        {/* === Chips === */}
+        {/* Chips */}
         <rect x="80" y="100" width="80" height="60" rx="10" className="fill-red-900 stroke-red-500" />
         <rect x="80" y="350" width="80" height="60" rx="10" className="fill-green-900 stroke-green-500" />
         <rect x="640" y="100" width="80" height="60" rx="10" className="fill-blue-900 stroke-blue-500" />
         <rect x="640" y="350" width="80" height="60" rx="10" className="fill-yellow-900 stroke-yellow-500" />
 
-        {/* --- PCB traces --- */}
+        {/* PCB Traces */}
         {traces.map((trace, index) => (
           <PCBTrace
             key={index}
