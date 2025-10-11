@@ -1,142 +1,132 @@
-import React, { useEffect, useState } from "react";
-import { Play, Pause } from "lucide-react";
-import PCBTrace from "./PCBTrace";
+import React, { useState, useEffect } from 'react';
+import PCBTrace from './PCBTrace';
+
+interface Trace {
+  points: { x: number; y: number }[];
+  type: 'power' | 'data' | 'control';
+  label?: string;
+  isActive: boolean;
+}
+
+const gridSize = 20; // for snap-to-grid
+
+const snapToGrid = (x: number, y: number) => ({
+  x: Math.round(x / gridSize) * gridSize,
+  y: Math.round(y / gridSize) * gridSize,
+});
 
 const PCBSimulation: React.FC = () => {
-  // Example: define 6 chips and traces that use multi-turn routing (waypoints)
-  const traces = [
-    {
-      id: "t1",
-      path: [
-        { x: 120, y: 130 },
-        { x: 110, y: 410},
-        { x: 200, y: 130 },
-        { x: 200, y: 200 },
-        { x: 300, y: 200 },
-      
-      ],
-      type: "power",
-      label: "VCC",
-      payload: "power" as const,
-    },
-    {
-      id: "t2",
-      path: [
-        { x: 120, y: 380 },
-        { x: 250, y: 380 },
-        { x: 250, y: 250 },
-        { x: 300, y: 250 },
-      ],
-      type: "data",
-      label: "DATA-IN",
-      payload: "data" as const,
-    },
-    {
-      id: "t3",
-      path: [
-        { x: 680, y: 130 },
-        { x: 560, y: 130 },
-        { x: 560, y: 200 },
-        { x: 450, y: 200 },
-      ],
-      type: "control",
-      label: "CTRL",
-      payload: "key" as const,
-    },
-    {
-      id: "t4",
-      path: [
-        { x: 680, y: 380 },
-        { x: 560, y: 380 },
-        { x: 560, y: 250 },
-        { x: 450, y: 250 },
-      ],
-      type: "data",
-      label: "OUT",
-      payload: "data" as const,
-    },
-    {
-      id: "t5",
-      path: [
-        { x: 300, y: 200 },
-        { x: 350, y: 160 },
-        { x: 450, y: 180 },
-      ],
-      type: "key",
-      label: "KEY",
-      payload: "key" as const,
-    },
-    {
-      id: "t6",
-      path: [
-        { x: 300, y: 250 },
-        { x: 350, y: 300 },
-        { x: 450, y: 280 },
-      ],
-      type: "data",
-      label: "DATA-2",
-      payload: "data" as const,
-    },
-  ];
+  const [traces, setTraces] = useState<Trace[]>([]);
+  const [currentPoints, setCurrentPoints] = useState<{ x: number; y: number }[]>([]);
+  const [isDrawing, setIsDrawing] = useState(false);
 
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [traceStages, setTraceStages] = useState<boolean[]>(
-    () => Array(traces.length).fill(false)
-  );
-
-  const play = () => setIsPlaying(true);
-  const pause = () => setIsPlaying(false);
-
-  // simple sequential stage progression when playing
+  // Load saved traces
   useEffect(() => {
-    if (!isPlaying) return;
-    let i = 0;
-    const interval = setInterval(() => {
-      if (i < traces.length) {
-        setTraceStages((prev) => {
-          const next = [...prev];
-          next[i] = true;
-          return next;
-        });
-        i++;
-      } else {
-        clearInterval(interval);
-      }
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [isPlaying, traces.length]);
+    const saved = localStorage.getItem('customPCBTraces');
+    if (saved) setTraces(JSON.parse(saved));
+  }, []);
+
+  const handleCanvasClick = (e: React.MouseEvent<SVGSVGElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    setCurrentPoints((prev) => [...prev, snapToGrid(x, y)]);
+    setIsDrawing(true);
+  };
+
+  const finishTrace = (type: 'power' | 'data' | 'control', label?: string) => {
+    if (currentPoints.length < 2) return;
+    const newTrace: Trace = { points: currentPoints, type, label, isActive: true };
+    const updatedTraces = [...traces, newTrace];
+    setTraces(updatedTraces);
+    localStorage.setItem('customPCBTraces', JSON.stringify(updatedTraces));
+    setCurrentPoints([]);
+    setIsDrawing(false);
+  };
+
+  const clearAll = () => {
+    setTraces([]);
+    setCurrentPoints([]);
+    localStorage.removeItem('customPCBTraces');
+  };
 
   return (
-    <div className="flex flex-col items-center h-[700px] bg-slate-950 p-4">
-      <button
-        onClick={isPlaying ? pause : play}
-        className="p-3 rounded-lg bg-blue-600 text-white hover:bg-blue-500 transition-colors mb-4"
+    <div className="flex flex-col items-center h-[600px] bg-slate-950 p-4">
+      <div className="mb-4 space-x-2">
+        <button
+          onClick={() => finishTrace('power', 'Power')}
+          className="px-4 py-2 bg-red-600 text-white rounded"
+        >
+          Finish Power Trace
+        </button>
+        <button
+          onClick={() => finishTrace('data', 'Data')}
+          className="px-4 py-2 bg-blue-600 text-white rounded"
+        >
+          Finish Data Trace
+        </button>
+        <button
+          onClick={() => finishTrace('control', 'Control')}
+          className="px-4 py-2 bg-green-600 text-white rounded"
+        >
+          Finish Control Trace
+        </button>
+        <button onClick={clearAll} className="px-4 py-2 bg-gray-600 text-white rounded">
+          Clear All
+        </button>
+      </div>
+
+      <svg
+        width="800"
+        height="500"
+        viewBox="0 0 800 500"
+        className="border border-gray-700"
+        onClick={handleCanvasClick}
       >
-        {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
-      </button>
-
-      <svg width="900" height="600" viewBox="0 0 900 600">
-        {/* Chips (example positions) */}
-        <rect x="80" y="120" width="80" height="60" rx="8" fill="#f87171" />
-        <rect x="80" y="360" width="80" height="60" rx="8" fill="#34d399" />
-        <rect x="640" y="120" width="80" height="60" rx="8" fill="#60a5fa" />
-        <rect x="640" y="360" width="80" height="60" rx="8" fill="#facc15" />
-        <rect x="340" y="140" width="80" height="60" rx="8" fill="#a78bfa" />
-        <rect x="340" y="280" width="80" height="60" rx="8" fill="#f472b6" />
-
-        {/* Traces */}
-        {traces.map((t, i) => (
-          <PCBTrace
-            key={t.id}
-            id={t.id}
-            path={t.path}
-            type={t.type}
-            isActive={isPlaying && !traceStages[i]}
-            label={t.label}
-            dotCount={4}
-            stageComplete={traceStages[i]}
-            payload={t.payload}
+        {/* Optional grid */}
+        {Array.from({ length: 41 }).map((_, i) => (
+          <line
+            key={`v${i}`}
+            x1={i * gridSize}
+            y1={0}
+            x2={i * gridSize}
+            y2={500}
+            stroke="#333"
+            strokeWidth={0.5}
           />
+        ))}
+        {Array.from({ length: 26 }).map((_, i) => (
+          <line
+            key={`h${i}`}
+            x1={0}
+            y1={i * gridSize}
+            x2={800}
+            y2={i * gridSize}
+            stroke="#333"
+            strokeWidth={0.5}
+          />
+        ))}
+
+        {/* Existing traces */}
+        {traces.map((trace, idx) => (
+          <PCBTrace
+            key={idx}
+            points={trace.points}
+            isActive={trace.isActive}
+            type={trace.type}
+            label={trace.label}
+          />
+        ))}
+
+        {/* Currently drawing trace */}
+        {isDrawing && currentPoints.length > 1 && (
+          <PCBTrace points={currentPoints} isActive type="data" />
+        )}
+
+        {/* Node indicators */}
+        {currentPoints.map((pt, idx) => (
+          <circle key={idx} cx={pt.x} cy={pt.y} r={4} fill="orange" />
         ))}
       </svg>
     </div>
