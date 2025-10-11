@@ -1,143 +1,111 @@
 import React, { useEffect, useState } from "react";
 
 interface PCBTraceProps {
-  from: { x: number; y: number };
-  to: { x: number; y: number };
-  isActive: boolean;
+  path: { x: number; y: number }[]; // Multiple points, not just from/to
   type: "power" | "data" | "control";
+  isActive: boolean;
   label?: string;
   dotCount?: number;
   stageComplete?: boolean;
-  payload?: "key" | "power" | "data";
+  payload?: "key" | "data" | "power";
 }
 
 const PCBTrace: React.FC<PCBTraceProps> = ({
-  from,
-  to,
-  isActive,
+  path,
   type,
+  isActive,
   label,
-  dotCount = 3,
-  stageComplete = false,
-  payload = "data",
+  dotCount = 4,
+  stageComplete,
+  payload,
 }) => {
-  const [offsets, setOffsets] = useState<number[]>(() =>
-    Array.from({ length: dotCount }, (_, i) => i * 0.3)
-  );
+  const [dots, setDots] = useState<number[]>([]);
 
-  // Color per trace type
+  // Path string from multiple segments
+  const pathD = path
+    .map((p, i) => (i === 0 ? `M${p.x},${p.y}` : `L${p.x},${p.y}`))
+    .join(" ");
+
+  // Trace color
   const getTraceColor = () => {
     switch (type) {
       case "power":
-        return "#ef4444";
+        return "#f87171";
       case "data":
-        return "#22d3ee";
+        return "#60a5fa";
       case "control":
         return "#facc15";
       default:
-        return "#9ca3af";
+        return "#a3a3a3";
     }
   };
 
-  // Symbol per payload type
+  // Choose symbol based on payload
   const getSymbol = () => {
     switch (payload) {
       case "key":
         return "🔑";
       case "power":
         return "⚡";
-      case "data":
       default:
-        return "⬤";
+        return "●";
     }
   };
 
-  const dx = to.x - from.x;
-  const dy = to.y - from.y;
-  const length = Math.sqrt(dx * dx + dy * dy);
-  const ux = dx / length;
-  const uy = dy / length;
-
-  // Path endpoints (offset from chip centers)
-  const startX = from.x + ux * 25;
-  const startY = from.y + uy * 25;
-  const endX = to.x - ux * 25;
-  const endY = to.y - uy * 25;
-
-  // Example of custom “angled” trace path (L shape)
-  const midX = startX + (endX - startX) / 2;
-  const pathD = `M ${startX} ${startY} L ${midX} ${startY} L ${midX} ${endY} L ${endX} ${endY}`;
-
-  // Animate packet movement
+  // Animate packets only if active
   useEffect(() => {
     if (!isActive || stageComplete) return;
     const interval = setInterval(() => {
-      setOffsets((prev) => prev.map((o) => (o + 0.05) % 1));
+      setDots((prev) =>
+        prev.map((d) => (d + 1) % 100)
+      );
     }, 100);
     return () => clearInterval(interval);
   }, [isActive, stageComplete]);
 
-  // Hide when inactive or completed
-  if (!isActive || stageComplete) return null;
+  useEffect(() => {
+    setDots(Array.from({ length: dotCount }, (_, i) => (i * 100) / dotCount));
+  }, [dotCount]);
+
+  if (!isActive && !stageComplete) return null;
 
   return (
-    <g className="pcb-trace">
-      {/* Outline layer */}
-      <path
-        d={pathD}
-        stroke="#1e293b"
-        strokeWidth={12}
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-
-      {/* Colored trace */}
+    <g>
+      {/* Hollow PCB trace outline */}
       <path
         d={pathD}
         stroke={getTraceColor()}
-        strokeWidth={8}
+        strokeWidth={10}
         fill="none"
         strokeLinecap="round"
         strokeLinejoin="round"
+        opacity={stageComplete ? 0.3 : 1}
       />
 
-      {/* Moving symbols (data packets) */}
-      {offsets.map((offset, i) => {
-        const t = offset;
-        const x =
-          startX +
-          (endX - startX) * t +
-          (Math.abs(midX - startX) > 10 ? Math.sin(t * Math.PI) * 5 : 0);
-        const y = startY + (endY - startY) * t;
+      {/* Moving data packets */}
+      {isActive &&
+        dots.map((d, i) => (
+          <circle key={i}>
+            <animateMotion
+              dur="3s"
+              repeatCount="indefinite"
+              keyPoints={`${d / 100};${(d + 10) / 100}`}
+              keyTimes="0;1"
+            >
+              <mpath href={`#trace-${label}-${i}`} />
+            </animateMotion>
+          </circle>
+        ))}
 
-        return (
-          <text
-            key={i}
-            x={x}
-            y={y}
-            fontSize="14"
-            textAnchor="middle"
-            alignmentBaseline="middle"
-            fill={getTraceColor()}
-          >
-            {getSymbol()}
+      {/* Symbol moving along trace */}
+      {isActive &&
+        dots.map((offset, i) => (
+          <text key={i}>
+            <textPath href={`#${label}-trace`} startOffset={`${offset}%`}>
+              {getSymbol()}
+            </textPath>
           </text>
-        );
-      })}
-
-      {/* Label above center */}
-      {label && (
-        <text
-          x={(startX + endX) / 2}
-          y={(startY + endY) / 2 - 20}
-          fill={getTraceColor()}
-          textAnchor="middle"
-          fontSize="12"
-        >
-          {label}
-        </text>
-      )}
+        ))}
     </g>
   );
 };
