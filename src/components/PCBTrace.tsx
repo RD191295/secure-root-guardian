@@ -17,9 +17,8 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
   label,
   chipRadius = 20,
 }) => {
-  const getTraceColor = () => {
-    return isActive ? 'stroke-cyan-400' : 'stroke-cyan-300/30';
-  };
+  // Fully transparent trace
+  const getTraceColor = () => 'stroke-transparent';
 
   // Start/end offset for chip edge
   const dx = to.x - from.x;
@@ -32,48 +31,35 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
   const endX = to.x - ux * chipRadius;
   const endY = to.y - uy * chipRadius;
 
-  // Orthogonal L-shaped path (horizontal → vertical)
+  // Orthogonal L-shaped path
   const midX = startX;
   const midY = endY;
   const pathD = `M ${startX},${startY} L ${midX},${midY} L ${endX},${endY}`;
 
-  // Midpoint for pulse and label
+  // Midpoint for optional pulse or label
   const labelX = (startX + endX) / 2;
   const labelY = (startY + endY) / 2;
 
   return (
     <g className="pcb-trace">
-      {/* Thick pipeline-like trace */}
+      {/* Trace line fully transparent */}
       <path
         d={pathD}
-        className={`${getTraceColor()} transition-all duration-300`}
-        strokeWidth={isActive ? 12 : 8} // ✅ increased width for pipeline effect
+        className={getTraceColor()}
+        strokeWidth={12} // optional pipeline width
         fill="none"
         strokeLinecap="round"
-        strokeLinejoin="round" // round corners to look like a real pipeline
-        opacity={isActive ? 1 : 0.3}
+        strokeLinejoin="round"
       />
 
-      {/* Active pulse */}
+      {/* Optional midpoint pulse (can also hide if you want full transparency) */}
       {isActive && (
         <circle
           cx={labelX}
           cy={labelY}
-          r={6} // slightly bigger to match trace width
-          className="fill-cyan-400 animate-pulse"
+          r={6}
+          className="fill-cyan-400 animate-pulse opacity-30"
         />
-      )}
-
-      {/* Optional label */}
-      {label && isActive && (
-        <text
-          x={labelX}
-          y={labelY - 15}
-          className="fill-gray-300 text-xs font-mono"
-          textAnchor="middle"
-        >
-          {label}
-        </text>
       )}
     </g>
   );
