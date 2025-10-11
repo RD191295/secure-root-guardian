@@ -3,12 +3,12 @@ import React, { useEffect, useState } from 'react';
 interface PCBTraceProps {
   from: { x: number; y: number };
   to: { x: number; y: number };
-  isActive: boolean;
+  isActive: boolean;           // true → simulation running
   type: 'power' | 'data' | 'control';
   label?: string;
   chipRadius?: number;
   dotCount?: number;
-  stageComplete?: boolean; // true → hide trace completely
+  stageComplete?: boolean;     // true → hide trace completely
 }
 
 const PCBTrace: React.FC<PCBTraceProps> = ({
@@ -25,6 +25,7 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
   const [dotSymbols, setDotSymbols] = useState<string[]>([]);
   const [dotSpeeds, setDotSpeeds] = useState<number[]>([]);
 
+  // Initialize moving dots
   useEffect(() => {
     setDots(Array.from({ length: dotCount }, (_, i) => i / dotCount));
     setDotSymbols(
@@ -52,6 +53,7 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
     }
   };
 
+  // Control point for smooth curve (quadratic Bezier)
   const ctrlX = (from.x + to.x) / 2;
   const ctrlY = from.y;
 
@@ -61,7 +63,7 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
     return { x, y };
   };
 
-  // Animate dots only if active and stage not complete
+  // Animate dots if active and stage not complete
   useEffect(() => {
     if (!isActive || stageComplete) return;
     const interval = setInterval(() => {
@@ -70,14 +72,15 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
     return () => clearInterval(interval);
   }, [isActive, dotSpeeds, stageComplete]);
 
-  if (stageComplete) return null; // hide entire trace and symbols
+  // Hide trace entirely if stage complete
+  if (stageComplete) return null;
 
   const labelX = (from.x + to.x) / 2;
   const labelY = (from.y + to.y) / 2;
 
   return (
     <g>
-      {/* Big trace “pipe” */}
+      {/* Big semi-transparent pipeline */}
       <path
         d={`M${from.x},${from.y} Q${ctrlX},${ctrlY} ${to.x},${to.y}`}
         stroke={getColor()}
@@ -88,7 +91,7 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
         opacity={0.2}
       />
 
-      {/* Hollow outline */}
+      {/* Hollow trace outline */}
       <path
         d={`M${from.x},${from.y} Q${ctrlX},${ctrlY} ${to.x},${to.y}`}
         stroke={getColor()}
@@ -98,27 +101,26 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
         strokeLinejoin="round"
       />
 
-      {/* Moving packets */}
-      {isActive &&
-        dots.map((t, i) => {
-          const { x, y } = getDotCoord(t);
-          return (
-            <text
-              key={i}
-              x={x}
-              y={y + 5}
-              fontSize={16}
-              textAnchor="middle"
-              alignmentBaseline="middle"
-              fill={getColor()}
-              opacity={0.6 + 0.4 * Math.sin(t * Math.PI)}
-            >
-              {dotSymbols[i]}
-            </text>
-          );
-        })}
+      {/* Moving symbols inside trace */}
+      {isActive && dots.map((t, i) => {
+        const { x, y } = getDotCoord(t);
+        return (
+          <text
+            key={i}
+            x={x}
+            y={y + 5}
+            fontSize={16}
+            textAnchor="middle"
+            alignmentBaseline="middle"
+            fill={getColor()}
+            opacity={0.6 + 0.4 * Math.sin(t * Math.PI)}
+          >
+            {dotSymbols[i]}
+          </text>
+        );
+      })}
 
-      {/* Label */}
+      {/* Optional label */}
       {label && (
         <text
           x={labelX}
