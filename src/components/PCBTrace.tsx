@@ -114,7 +114,7 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
       <path
         d={`M${from.x},${from.y} Q${ctrlX},${ctrlY} ${to.x},${to.y}`}
         stroke={getColor()}
-        strokeWidth={13}
+        strokeWidth={19}
         fill="none"
         strokeLinecap="round"
         strokeLinejoin="round"
