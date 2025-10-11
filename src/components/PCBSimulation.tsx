@@ -10,7 +10,7 @@ const PCBSimulation: React.FC = () => {
     { from: { x: 680, y: 380 }, to: { x: 500, y: 250 }, type: 'data', label: 'OUT' },
   ];
 
-  // dependencies: index of trace that must complete before current trace starts
+  // Dependencies: trace index that must complete before current trace starts
   const dependencies = [null, 0, null, 1];
 
   const [isPlaying, setIsPlaying] = useState(false);
@@ -38,7 +38,7 @@ const PCBSimulation: React.FC = () => {
     return () => clearInterval(interval);
   }, [isPlaying]);
 
-  // Calculate merge points: here, the central chip at (300,250) is shared
+  // Merge point for central chip
   const mergePoint = { x: 300, y: 250 };
 
   return (
@@ -64,15 +64,15 @@ const PCBSimulation: React.FC = () => {
             from={trace.from}
             to={trace.to}
             isActive={
-              isPlaying &&
-              !traceStages[i] &&
-              (dependencies[i] === null || traceStages[dependencies[i]])
+              isPlaying && // only visible if simulation is playing
+              !traceStages[i] && // not yet completed
+              (dependencies[i] === null || traceStages[dependencies[i]]) // dependency satisfied
             }
             type={trace.type}
             label={trace.label}
             dotCount={3}
             stageComplete={traceStages[i]}
-            mergePoint={i === 1 || i === 3 ? mergePoint : undefined} // show merge for traces connecting central chip
+            mergePoint={i === 1 || i === 3 ? mergePoint : undefined}
           />
         ))}
       </svg>
