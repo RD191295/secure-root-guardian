@@ -10,15 +10,13 @@ const PCBSimulation: React.FC = () => {
     { from: { x: 680, y: 380 }, to: { x: 500, y: 250 }, type: 'data', label: 'OUT' },
   ];
 
-  // Play/Pause simulation
   const [isPlaying, setIsPlaying] = useState(false);
+  const [traceStages, setTraceStages] = useState([false, false, false, false]);
+
   const play = () => setIsPlaying(true);
   const pause = () => setIsPlaying(false);
 
-  // Track which traces are complete
-  const [traceStages, setTraceStages] = useState([false, false, false, false]);
-
-  // Automatically complete stages when simulation is playing
+  // Automatically complete stages when simulation is running
   useEffect(() => {
     if (!isPlaying) return;
     let i = 0;
@@ -26,20 +24,20 @@ const PCBSimulation: React.FC = () => {
       if (i < traces.length) {
         setTraceStages(prev => {
           const newStages = [...prev];
-          newStages[i] = true; // mark current trace as complete
+          newStages[i] = true;
           return newStages;
         });
         i++;
       } else {
         clearInterval(interval);
       }
-    }, 3000); // each stage completes after 3s
+    }, 3000);
     return () => clearInterval(interval);
   }, [isPlaying]);
 
   return (
     <div className="flex flex-col items-center h-[600px] bg-slate-950 p-4">
-      {/* Play/Pause Button */}
+      {/* Play/Pause button */}
       <button
         onClick={isPlaying ? pause : play}
         className="p-4 rounded-lg bg-blue-600 text-white hover:bg-blue-500 transition-colors mb-4"
@@ -56,16 +54,16 @@ const PCBSimulation: React.FC = () => {
         <rect x="640" y="350" width="80" height="60" rx="10" fill="#facc15" stroke="#eab308" />
 
         {/* PCB Traces */}
-        {isPlaying && traces.map((trace, i) => (
+        {traces.map((trace, i) => (
           <PCBTrace
             key={i}
             from={trace.from}
             to={trace.to}
-            isActive={!traceStages[i]}       // active if stage not complete
+            isActive={isPlaying && !traceStages[i]} // visible only if simulation running and stage not complete
             type={trace.type}
             label={trace.label}
             dotCount={3}
-            stageComplete={traceStages[i]}   // hide when stage complete
+            stageComplete={traceStages[i]} // hide when stage is complete
           />
         ))}
       </svg>
