@@ -32,8 +32,8 @@ export const Chip3DEnvironment: React.FC<Chip3DEnvironmentProps> = ({
       const mod = modules.find(m => m.id === id);
       if (!mod) return { x: 0, y: 0 };
       return {
-        x: mod.position.x + mod.size.width-10,
-        y: mod.position.y + mod.size.height-20
+        x: mod.position.x + mod.size.width/2,
+        y: mod.position.y + mod.size.height+5
       };
     };
 
