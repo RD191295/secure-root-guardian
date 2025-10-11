@@ -1,5 +1,4 @@
-// src/components/PCBTrace.tsx
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 interface PCBTraceProps {
   from: { x: number; y: number };
@@ -8,6 +7,8 @@ interface PCBTraceProps {
   type: 'power' | 'data' | 'control';
   label?: string;
   chipRadius?: number;
+  dotCount?: number; // number of moving dots
+  speed?: number;    // animation speed
 }
 
 const PCBTrace: React.FC<PCBTraceProps> = ({
@@ -17,20 +18,26 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
   type,
   label,
   chipRadius = 20,
+  dotCount = 5,
+  speed = 0.01,
 }) => {
+  const [dotPositions, setDotPositions] = useState<number[]>([]);
+
+  // Initialize dots with staggered starting positions
+  useEffect(() => {
+    setDotPositions(Array.from({ length: dotCount }, (_, i) => i / dotCount));
+  }, [dotCount]);
+
   const getTraceColor = () => {
     switch (type) {
-      case 'power':
-        return '#ef4444'; // Red
-      case 'data':
-        return '#3b82f6'; // Blue
-      case 'control':
-        return '#facc15'; // Yellow
-      default:
-        return '#6b7280'; // Gray
+      case 'power': return 'red';
+      case 'data': return 'cyan';
+      case 'control': return 'yellow';
+      default: return 'gray';
     }
   };
 
+  // Compute L-shaped path
   const dx = to.x - from.x;
   const dy = to.y - from.y;
   const length = Math.sqrt(dx * dx + dy * dy);
@@ -46,6 +53,26 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
   const midY = endY;
   const pathD = `M ${startX},${startY} L ${midX},${midY} L ${endX},${endY}`;
 
+  // Function to get dot coordinates along L-shaped path
+  const getDotCoord = (t: number) => {
+    if (t < 0.5) {
+      const p = t * 2;
+      return { x: startX + (midX - startX) * p, y: startY + (midY - startY) * p };
+    } else {
+      const p = (t - 0.5) * 2;
+      return { x: midX + (endX - midX) * p, y: midY + (endY - midY) * p };
+    }
+  };
+
+  // Animate dots
+  useEffect(() => {
+    if (!isActive) return;
+    const interval = setInterval(() => {
+      setDotPositions((prev) => prev.map((p) => (p + speed) % 1));
+    }, 16); // ~60fps
+    return () => clearInterval(interval);
+  }, [isActive, speed]);
+
   const labelX = (startX + endX) / 2;
   const labelY = (startY + endY) / 2;
 
@@ -54,7 +81,7 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
       {/* Stock outline */}
       <path
         d={pathD}
-        stroke="#d1d5db" // Light gray
+        stroke="#555555"
         strokeWidth={8}
         fill="none"
         strokeLinecap="round"
@@ -69,7 +96,13 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      {/* Optional label */}
+      {/* Moving dots */}
+      {isActive &&
+        dotPositions.map((t, i) => {
+          const { x, y } = getDotCoord(t);
+          return <circle key={i} cx={x} cy={y} r={5} fill={getTraceColor()} className="opacity-70" />;
+        })}
+      {/* Label */}
       {label && isActive && (
         <text
           x={labelX}
