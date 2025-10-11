@@ -1,151 +1,110 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 
 interface PCBTraceProps {
-  from: { x: number; y: number };
-  to: { x: number; y: number };
+  id: string; // unique id for animation reference
+  path: string; // full SVG path string (custom shape)
+  type: "power" | "data" | "control" | "key";
   isActive: boolean;
-  type: 'power' | 'data' | 'control';
   label?: string;
-  chipRadius?: number;
-  dotCount?: number;
-  stageComplete?: boolean;
-  payload?: 'key' | 'data' | 'power'; // optional content type
+  progress?: number; // 0 = running, 1 = done
 }
 
 const PCBTrace: React.FC<PCBTraceProps> = ({
-  from,
-  to,
-  isActive,
+  id,
+  path,
   type,
+  isActive,
   label,
-  chipRadius = 20,
-  dotCount = 3,
-  stageComplete = false,
-  payload,
+  progress = 0,
 }) => {
-  const [dots, setDots] = useState<number[]>([]);
-  const [dotSymbols, setDotSymbols] = useState<string[]>([]);
-  const [dotSpeeds, setDotSpeeds] = useState<number[]>([]);
-  const [opacity, setOpacity] = useState(1);
+  const [symbolOffset, setSymbolOffset] = useState(0);
 
-  // Initialize moving packet positions and symbols
-  useEffect(() => {
-    setDots(Array.from({ length: dotCount }, (_, i) => i / dotCount));
-
-    // Set symbol based on payload or type
-    setDotSymbols(
-      Array.from({ length: dotCount }, () => {
-        if (payload === 'key') return '🔑';
-        if (type === 'power') return '⚡';
-        if (type === 'control') return '⚙️';
-        if (type === 'data') return String(Math.floor(Math.random() * 10));
-        return '?';
-      })
-    );
-
-    setDotSpeeds(
-      Array.from({ length: dotCount }, () =>
-        type === 'power' ? 0.015 : type === 'control' ? 0.01 : 0.008
-      )
-    );
-  }, [dotCount, type, payload]);
-
-  // Update numbers for data packets dynamically
-  useEffect(() => {
-    if (!isActive || stageComplete || type !== 'data') return;
-    const interval = setInterval(() => {
-      setDotSymbols(prev => prev.map(s => (payload === 'key' ? '🔑' : type === 'data' ? String(Math.floor(Math.random() * 10)) : s)));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [isActive, stageComplete, type, payload]);
-
-  const getColor = () => {
+  // Get color by type
+  const getTraceColor = () => {
     switch (type) {
-      case 'power': return 'red';
-      case 'data': return 'cyan';
-      case 'control': return 'yellow';
-      default: return 'gray';
+      case "power":
+        return "#f87171"; // red
+      case "data":
+        return "#22d3ee"; // cyan
+      case "control":
+        return "#a78bfa"; // purple
+      case "key":
+        return "#facc15"; // yellow
+      default:
+        return "#9ca3af"; // gray
     }
   };
 
-  const ctrlX = (from.x + to.x) / 2;
-  const ctrlY = from.y;
-
-  const getCoord = (t: number) => {
-    const x = (1 - t) * (1 - t) * from.x + 2 * (1 - t) * t * ctrlX + t * t * to.x;
-    const y = (1 - t) * (1 - t) * from.y + 2 * (1 - t) * t * ctrlY + t * t * to.y;
-    return { x, y };
+  // Symbol for type
+  const getSymbol = () => {
+    switch (type) {
+      case "power":
+        return "⚡";
+      case "data":
+        return "⬤";
+      case "control":
+        return "🔁";
+      case "key":
+        return "🔑";
+      default:
+        return "⬤";
+    }
   };
 
-  // Animate packets
+  // Animate symbol movement
   useEffect(() => {
-    if (!isActive || stageComplete) return;
+    if (!isActive || progress === 1) return;
     const interval = setInterval(() => {
-      setDots(prev => prev.map((p, i) => (p + dotSpeeds[i]) % 1));
-    }, 16);
+      setSymbolOffset((prev) => (prev + 0.02) % 1);
+    }, 100);
     return () => clearInterval(interval);
-  }, [isActive, dotSpeeds, stageComplete]);
+  }, [isActive, progress]);
 
-  // Fade out
-  useEffect(() => {
-    if (!stageComplete) {
-      setOpacity(1);
-      return;
-    }
-    let animFrame: number;
-    const fade = () => {
-      setOpacity(prev => {
-        if (prev <= 0) return 0;
-        animFrame = requestAnimationFrame(fade);
-        return prev - 0.02;
-      });
-    };
-    fade();
-    return () => cancelAnimationFrame(animFrame);
-  }, [stageComplete]);
-
-  if (!isActive && !stageComplete) return null;
-
-  const getPacketSize = () => (type === 'power' || payload === 'key' ? 20 : type === 'control' ? 16 : 12);
+  // Hide when not active or stage completed
+  if (!isActive || progress === 1) return null;
 
   return (
-    <g opacity={opacity}>
-      {/* Trace path */}
+    <g className="pcb-trace">
+      {/* Main outline (thicker background) */}
       <path
-        d={`M${from.x},${from.y} Q${ctrlX},${ctrlY} ${to.x},${to.y}`}
-        stroke={getColor()}
-        strokeWidth={19}
+        id={id}
+        d={path}
+        stroke="#1e293b"
+        strokeWidth={14}
         fill="none"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
 
-      {/* Data packets */}
-      {dots.map((t, i) => {
-        const { x, y } = getCoord(t);
-        return (
-          <text
-            key={i}
-            x={x}
-            y={y + 4}
-            fontSize={getPacketSize()}
-            fill={getColor()}
-            textAnchor="middle"
-            alignmentBaseline="middle"
-            opacity={0.8}
-          >
-            {dotSymbols[i]}
-          </text>
-        );
-      })}
+      {/* Colored main trace */}
+      <path
+        d={path}
+        stroke={getTraceColor()}
+        strokeWidth={8}
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
 
-      {/* Label */}
+      {/* Animated symbol (data packet / power symbol) */}
+      <text fontSize="16" fill={getTraceColor()}>
+        <textPath
+          href={`#${id}`}
+          startOffset={`${symbolOffset * 100}%`}
+          textAnchor="middle"
+        >
+          {getSymbol()}
+        </textPath>
+      </text>
+
+      {/* Optional label */}
       {label && (
         <text
-          x={(from.x + to.x) / 2}
-          y={(from.y + to.y) / 2 - 15}
-          className="fill-gray-300 text-xs font-mono"
+          x="50%"
+          dy="-10"
           textAnchor="middle"
+          fill={getTraceColor()}
+          fontSize="12"
         >
           {label}
         </text>
