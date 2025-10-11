@@ -15,7 +15,12 @@ const PCBSimulation: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const traces = [
+  const traces: Array<{
+    from: { x: number; y: number };
+    to: { x: number; y: number };
+    type: 'power' | 'data' | 'control';
+    label: string;
+  }> = [
     { from: { x: 120, y: 130 }, to: { x: 300, y: 250 }, type: 'power', label: 'VCC' },
     { from: { x: 120, y: 380 }, to: { x: 300, y: 250 }, type: 'data', label: 'DATA-IN' },
     { from: { x: 680, y: 130 }, to: { x: 500, y: 250 }, type: 'control', label: 'CTRL' },
