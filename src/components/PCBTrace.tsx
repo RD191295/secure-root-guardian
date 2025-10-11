@@ -8,6 +8,7 @@ interface PCBTraceProps {
   label?: string;
   chipRadius?: number;
   dotCount?: number;
+  progress?: number; // 0 → in progress, 1 → stage complete
 }
 
 const PCBTrace: React.FC<PCBTraceProps> = ({
@@ -18,6 +19,7 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
   label,
   chipRadius = 20,
   dotCount = 5,
+  progress = 0,
 }) => {
   const [dots, setDots] = useState<number[]>([]);
   const [dotSymbols, setDotSymbols] = useState<string[]>([]);
@@ -50,7 +52,6 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
     }
   };
 
-  // Bezier curve control point for smooth curve
   const ctrlX = (from.x + to.x) / 2;
   const ctrlY = from.y;
 
@@ -60,58 +61,61 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
     return { x, y };
   };
 
+  // Animate dots only if stage not complete
   useEffect(() => {
-    if (!isActive) return;
+    if (!isActive || progress >= 1) return;
     const interval = setInterval(() => {
       setDots(prev => prev.map((p, i) => (p + dotSpeeds[i]) % 1));
     }, 16);
     return () => clearInterval(interval);
-  }, [isActive, dotSpeeds]);
+  }, [isActive, dotSpeeds, progress]);
 
   const labelX = (from.x + to.x) / 2;
   const labelY = (from.y + to.y) / 2;
 
   return (
     <g>
-      {/* Big semi-transparent trace “pipe” */}
+      {/* Big trace pipe */}
       <path
         d={`M${from.x},${from.y} Q${ctrlX},${ctrlY} ${to.x},${to.y}`}
         stroke={getColor()}
-        strokeWidth={20}        // BIG trace width
+        strokeWidth={20}
         fill="none"
         strokeLinecap="round"
         strokeLinejoin="round"
-        opacity={0.2}           // semi-transparent to show the pipeline
+        opacity={0.2}
       />
 
-      {/* Hollow edge outline */}
+      {/* Hollow edge */}
       <path
         d={`M${from.x},${from.y} Q${ctrlX},${ctrlY} ${to.x},${to.y}`}
         stroke={getColor()}
-        strokeWidth={6}         // thin outline
+        strokeWidth={6}
         fill="none"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
 
-      {/* Moving data packets inside trace */}
-      {isActive && dots.map((t, i) => {
-        const { x, y } = getDotCoord(t);
-        return (
-          <text
-            key={i}
-            x={x}
-            y={y + 5}
-            fontSize={16}           // slightly bigger packet inside bigger trace
-            textAnchor="middle"
-            alignmentBaseline="middle"
-            fill={getColor()}
-            opacity={0.6 + 0.4 * Math.sin(t * Math.PI)} // fade effect
-          >
-            {dotSymbols[i]}
-          </text>
-        );
-      })}
+      {/* Moving data packets (only if stage not complete) */}
+      {isActive && progress < 1 &&
+        dots.map((t, i) => {
+          const { x, y } = getDotCoord(t);
+          return (
+            <text
+              key={i}
+              x={x}
+              y={y + 5}
+              fontSize={16}
+              textAnchor="middle"
+              alignmentBaseline="middle"
+              fill={getColor()}
+              opacity={0.6 + 0.4 * Math.sin(t * Math.PI)}
+            >
+              {dotSymbols[i]}
+            </text>
+          );
+        })
+      }
 
       {/* Label */}
       {label && (
