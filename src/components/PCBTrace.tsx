@@ -233,4 +233,4 @@ const PCBSimulation: React.FC = () => {
   );
 };
 
-export default PCBSimulation;
+export default PCBTRACE;
