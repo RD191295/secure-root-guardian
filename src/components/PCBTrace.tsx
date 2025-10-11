@@ -8,7 +8,6 @@ interface PCBTraceProps {
   label?: string;
   chipRadius?: number;
   dotCount?: number;
-  speed?: number;
 }
 
 const PCBTrace: React.FC<PCBTraceProps> = ({
@@ -19,22 +18,27 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
   label,
   chipRadius = 20,
   dotCount = 5,
-  speed = 0.01,
 }) => {
   const [dots, setDots] = useState<number[]>([]);
   const [dotSymbols, setDotSymbols] = useState<string[]>([]);
+  const [dotSpeeds, setDotSpeeds] = useState<number[]>([]);
 
-  // Initialize dot positions and symbols
   useEffect(() => {
     setDots(Array.from({ length: dotCount }, (_, i) => i / dotCount));
-    const symbols = Array.from({ length: dotCount }, () =>
-      type === 'power'
-        ? '⚡'
-        : type === 'control'
-        ? '⚙️'
-        : String(Math.floor(Math.random() * 10))
+    setDotSymbols(
+      Array.from({ length: dotCount }, () =>
+        type === 'power'
+          ? '⚡'
+          : type === 'control'
+          ? '⚙️'
+          : String(Math.floor(Math.random() * 10))
+      )
     );
-    setDotSymbols(symbols);
+    setDotSpeeds(
+      Array.from({ length: dotCount }, () =>
+        type === 'power' ? 0.015 : type === 'control' ? 0.01 : 0.008
+      )
+    );
   }, [dotCount, type]);
 
   const getColor = () => {
@@ -46,68 +50,63 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
     }
   };
 
-  // Compute L-shaped path
-  const dx = to.x - from.x;
-  const dy = to.y - from.y;
-  const length = Math.sqrt(dx*dx + dy*dy);
-  const ux = dx / length;
-  const uy = dy / length;
-
-  const startX = from.x + ux*chipRadius;
-  const startY = from.y + uy*chipRadius;
-  const endX = to.x - ux*chipRadius;
-  const endY = to.y - uy*chipRadius;
-
-  const midX = startX;
-  const midY = endY;
-  const pathD = `M ${startX},${startY} L ${midX},${midY} L ${endX},${endY}`;
+  // Bezier curve control point for smooth curve
+  const ctrlX = (from.x + to.x) / 2;
+  const ctrlY = from.y;
 
   const getDotCoord = (t: number) => {
-    if (t < 0.5) {
-      const p = t*2;
-      return { x: startX + (midX - startX)*p, y: startY + (midY - startY)*p };
-    } else {
-      const p = (t-0.5)*2;
-      return { x: midX + (endX - midX)*p, y: midY + (endY - midY)*p };
-    }
+    const x = (1 - t) * (1 - t) * from.x + 2 * (1 - t) * t * ctrlX + t * t * to.x;
+    const y = (1 - t) * (1 - t) * from.y + 2 * (1 - t) * t * ctrlY + t * t * to.y;
+    return { x, y };
   };
 
-  // Animate dots
   useEffect(() => {
     if (!isActive) return;
     const interval = setInterval(() => {
-      setDots(prev => prev.map(p => (p + speed) % 1));
+      setDots(prev => prev.map((p, i) => (p + dotSpeeds[i]) % 1));
     }, 16);
     return () => clearInterval(interval);
-  }, [isActive, speed]);
+  }, [isActive, dotSpeeds]);
 
-  const labelX = (startX + endX)/2;
-  const labelY = (startY + endY)/2;
+  const labelX = (from.x + to.x) / 2;
+  const labelY = (from.y + to.y) / 2;
 
   return (
-    <g className="pcb-trace">
-      {/* Hollow trace */}
+    <g>
+      {/* Big semi-transparent trace “pipe” */}
       <path
-        d={pathD}
-        stroke="#555555"
-        strokeWidth={6}
+        d={`M${from.x},${from.y} Q${ctrlX},${ctrlY} ${to.x},${to.y}`}
+        stroke={getColor()}
+        strokeWidth={20}        // BIG trace width
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity={0.2}           // semi-transparent to show the pipeline
+      />
+
+      {/* Hollow edge outline */}
+      <path
+        d={`M${from.x},${from.y} Q${ctrlX},${ctrlY} ${to.x},${to.y}`}
+        stroke={getColor()}
+        strokeWidth={6}         // thin outline
         fill="none"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
 
-      {/* Moving symbols */}
-      {isActive && dots.map((t,i) => {
-        const {x, y} = getDotCoord(t);
+      {/* Moving data packets inside trace */}
+      {isActive && dots.map((t, i) => {
+        const { x, y } = getDotCoord(t);
         return (
           <text
             key={i}
             x={x}
-            y={y+5}
-            fontSize={14}
+            y={y + 5}
+            fontSize={16}           // slightly bigger packet inside bigger trace
             textAnchor="middle"
             alignmentBaseline="middle"
             fill={getColor()}
+            opacity={0.6 + 0.4 * Math.sin(t * Math.PI)} // fade effect
           >
             {dotSymbols[i]}
           </text>
@@ -118,7 +117,7 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
       {label && (
         <text
           x={labelX}
-          y={labelY-15}
+          y={labelY - 15}
           className="fill-gray-300 text-xs font-mono"
           textAnchor="middle"
         >
