@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 interface PCBTraceProps {
   from: { x: number; y: number };
   to: { x: number; y: number };
-  isActive: boolean;           // true → simulation running
+  isActive: boolean;           // true → simulation running and trace visible
   type: 'power' | 'data' | 'control';
   label?: string;
   chipRadius?: number;
@@ -72,8 +72,8 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
     return () => clearInterval(interval);
   }, [isActive, dotSpeeds, stageComplete]);
 
-  // Hide trace entirely if stage complete
-  if (stageComplete) return null;
+  // Hide trace entirely if stage complete or simulation not active
+  if (stageComplete || !isActive) return null;
 
   const labelX = (from.x + to.x) / 2;
   const labelY = (from.y + to.y) / 2;
@@ -102,7 +102,7 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
       />
 
       {/* Moving symbols inside trace */}
-      {isActive && dots.map((t, i) => {
+      {dots.map((t, i) => {
         const { x, y } = getDotCoord(t);
         return (
           <text
