@@ -51,7 +51,7 @@ export const MODULES: Module[] = [
     id: 'crypto',
     name: 'Crypto Engine',
     type: 'crypto',
-    position: { x: 250, y: 250, z: 0 },
+    position: { x: 400, y: 400, z: 0 },
     size: { width: 160, height: 180, depth: 20 },
     color: 'from-emerald-800 to-emerald-600',
     isActive: false,
