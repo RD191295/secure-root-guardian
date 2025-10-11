@@ -9,7 +9,7 @@ interface PCBTraceProps {
   chipRadius?: number;
   dotCount?: number;
   stageComplete?: boolean;
-  mergePoint?: { x: number; y: number }; // optional merge visualization
+  payload?: 'key' | 'data' | 'power'; // optional content type
 }
 
 const PCBTrace: React.FC<PCBTraceProps> = ({
@@ -19,38 +19,45 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
   type,
   label,
   chipRadius = 20,
-  dotCount = 5,
+  dotCount = 3,
   stageComplete = false,
-  mergePoint,
+  payload,
 }) => {
   const [dots, setDots] = useState<number[]>([]);
   const [dotSymbols, setDotSymbols] = useState<string[]>([]);
   const [dotSpeeds, setDotSpeeds] = useState<number[]>([]);
   const [opacity, setOpacity] = useState(1);
 
-  // Initialize dots
+  // Initialize moving packet positions and symbols
   useEffect(() => {
     setDots(Array.from({ length: dotCount }, (_, i) => i / dotCount));
+
+    // Set symbol based on payload or type
     setDotSymbols(
-      Array.from({ length: dotCount }, () =>
-        type === 'power' ? '⚡' : type === 'control' ? '⚙️' : String(Math.floor(Math.random() * 10))
-      )
+      Array.from({ length: dotCount }, () => {
+        if (payload === 'key') return '🔑';
+        if (type === 'power') return '⚡';
+        if (type === 'control') return '⚙️';
+        if (type === 'data') return String(Math.floor(Math.random() * 10));
+        return '?';
+      })
     );
+
     setDotSpeeds(
       Array.from({ length: dotCount }, () =>
         type === 'power' ? 0.015 : type === 'control' ? 0.01 : 0.008
       )
     );
-  }, [dotCount, type]);
+  }, [dotCount, type, payload]);
 
-  // Randomize data symbols every second
+  // Update numbers for data packets dynamically
   useEffect(() => {
     if (!isActive || stageComplete || type !== 'data') return;
     const interval = setInterval(() => {
-      setDotSymbols(prev => prev.map(() => String(Math.floor(Math.random() * 10))));
+      setDotSymbols(prev => prev.map(s => (payload === 'key' ? '🔑' : type === 'data' ? String(Math.floor(Math.random() * 10)) : s)));
     }, 1000);
     return () => clearInterval(interval);
-  }, [isActive, stageComplete, type]);
+  }, [isActive, stageComplete, type, payload]);
 
   const getColor = () => {
     switch (type) {
@@ -64,13 +71,13 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
   const ctrlX = (from.x + to.x) / 2;
   const ctrlY = from.y;
 
-  const getDotCoord = (t: number) => {
+  const getCoord = (t: number) => {
     const x = (1 - t) * (1 - t) * from.x + 2 * (1 - t) * t * ctrlX + t * t * to.x;
     const y = (1 - t) * (1 - t) * from.y + 2 * (1 - t) * t * ctrlY + t * t * to.y;
     return { x, y };
   };
 
-  // Animate dots
+  // Animate packets
   useEffect(() => {
     if (!isActive || stageComplete) return;
     const interval = setInterval(() => {
@@ -79,7 +86,7 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
     return () => clearInterval(interval);
   }, [isActive, dotSpeeds, stageComplete]);
 
-  // Fade-out when stage completes
+  // Fade out
   useEffect(() => {
     if (!stageComplete) {
       setOpacity(1);
@@ -97,25 +104,13 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
     return () => cancelAnimationFrame(animFrame);
   }, [stageComplete]);
 
-  // Hide completely if not active and not fading
   if (!isActive && !stageComplete) return null;
 
-  const getPacketSize = () => (type === 'power' ? 20 : type === 'control' ? 16 : 12);
+  const getPacketSize = () => (type === 'power' || payload === 'key' ? 20 : type === 'control' ? 16 : 12);
 
   return (
     <g opacity={opacity}>
-      {/* Big semi-transparent pipeline */}
-      <path
-        d={`M${from.x},${from.y} Q${ctrlX},${ctrlY} ${to.x},${to.y}`}
-        stroke={getColor()}
-        strokeWidth={20}
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        opacity={0.2}
-      />
-
-      {/* Hollow trace outline */}
+      {/* Trace path */}
       <path
         d={`M${from.x},${from.y} Q${ctrlX},${ctrlY} ${to.x},${to.y}`}
         stroke={getColor()}
@@ -125,37 +120,26 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
         strokeLinejoin="round"
       />
 
-      {/* Moving symbols */}
+      {/* Data packets */}
       {dots.map((t, i) => {
-        const { x, y } = getDotCoord(t);
+        const { x, y } = getCoord(t);
         return (
           <text
             key={i}
             x={x}
-            y={y + 5}
+            y={y + 4}
             fontSize={getPacketSize()}
+            fill={getColor()}
             textAnchor="middle"
             alignmentBaseline="middle"
-            fill={getColor()}
-            opacity={0.6 + 0.4 * Math.sin(t * Math.PI)}
+            opacity={0.8}
           >
             {dotSymbols[i]}
           </text>
         );
       })}
 
-      {/* Merge/collision point */}
-      {mergePoint && (
-        <circle
-          cx={mergePoint.x}
-          cy={mergePoint.y}
-          r={8}
-          fill="white"
-          opacity={0.8}
-        />
-      )}
-
-      {/* Optional label */}
+      {/* Label */}
       {label && (
         <text
           x={(from.x + to.x) / 2}
