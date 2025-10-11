@@ -1,84 +1,100 @@
 import React, { useEffect, useState } from "react";
 
 interface PCBTraceProps {
-  id: string; // unique id for animation reference
-  path: string; // full SVG path string (custom shape)
-  type: "power" | "data" | "control" | "key";
+  from: { x: number; y: number };
+  to: { x: number; y: number };
   isActive: boolean;
+  type: "power" | "data" | "control";
   label?: string;
-  progress?: number; // 0 = running, 1 = done
+  dotCount?: number;
+  stageComplete?: boolean;
+  payload?: "key" | "power" | "data";
 }
 
 const PCBTrace: React.FC<PCBTraceProps> = ({
-  id,
-  path,
-  type,
+  from,
+  to,
   isActive,
+  type,
   label,
-  progress = 0,
+  dotCount = 3,
+  stageComplete = false,
+  payload = "data",
 }) => {
-  const [symbolOffset, setSymbolOffset] = useState(0);
+  const [offsets, setOffsets] = useState<number[]>(() =>
+    Array.from({ length: dotCount }, (_, i) => i * 0.3)
+  );
 
-  // Get color by type
+  // Color per trace type
   const getTraceColor = () => {
     switch (type) {
       case "power":
-        return "#f87171"; // red
+        return "#ef4444";
       case "data":
-        return "#22d3ee"; // cyan
+        return "#22d3ee";
       case "control":
-        return "#a78bfa"; // purple
-      case "key":
-        return "#facc15"; // yellow
+        return "#facc15";
       default:
-        return "#9ca3af"; // gray
+        return "#9ca3af";
     }
   };
 
-  // Symbol for type
+  // Symbol per payload type
   const getSymbol = () => {
-    switch (type) {
+    switch (payload) {
+      case "key":
+        return "🔑";
       case "power":
         return "⚡";
       case "data":
-        return "⬤";
-      case "control":
-        return "🔁";
-      case "key":
-        return "🔑";
       default:
         return "⬤";
     }
   };
 
-  // Animate symbol movement
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const length = Math.sqrt(dx * dx + dy * dy);
+  const ux = dx / length;
+  const uy = dy / length;
+
+  // Path endpoints (offset from chip centers)
+  const startX = from.x + ux * 25;
+  const startY = from.y + uy * 25;
+  const endX = to.x - ux * 25;
+  const endY = to.y - uy * 25;
+
+  // Example of custom “angled” trace path (L shape)
+  const midX = startX + (endX - startX) / 2;
+  const pathD = `M ${startX} ${startY} L ${midX} ${startY} L ${midX} ${endY} L ${endX} ${endY}`;
+
+  // Animate packet movement
   useEffect(() => {
-    if (!isActive || progress === 1) return;
+    if (!isActive || stageComplete) return;
     const interval = setInterval(() => {
-      setSymbolOffset((prev) => (prev + 0.02) % 1);
+      setOffsets((prev) => prev.map((o) => (o + 0.05) % 1));
     }, 100);
     return () => clearInterval(interval);
-  }, [isActive, progress]);
+  }, [isActive, stageComplete]);
 
-  // Hide when not active or stage completed
-  if (!isActive || progress === 1) return null;
+  // Hide when inactive or completed
+  if (!isActive || stageComplete) return null;
 
   return (
     <g className="pcb-trace">
-      {/* Main outline (thicker background) */}
+      {/* Outline layer */}
       <path
-        id={id}
-        d={path}
+        d={pathD}
         stroke="#1e293b"
-        strokeWidth={14}
+        strokeWidth={12}
         fill="none"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
 
-      {/* Colored main trace */}
+      {/* Colored trace */}
       <path
-        d={path}
+        d={pathD}
         stroke={getTraceColor()}
         strokeWidth={8}
         fill="none"
@@ -86,24 +102,37 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
         strokeLinejoin="round"
       />
 
-      {/* Animated symbol (data packet / power symbol) */}
-      <text fontSize="16" fill={getTraceColor()}>
-        <textPath
-          href={`#${id}`}
-          startOffset={`${symbolOffset * 100}%`}
-          textAnchor="middle"
-        >
-          {getSymbol()}
-        </textPath>
-      </text>
+      {/* Moving symbols (data packets) */}
+      {offsets.map((offset, i) => {
+        const t = offset;
+        const x =
+          startX +
+          (endX - startX) * t +
+          (Math.abs(midX - startX) > 10 ? Math.sin(t * Math.PI) * 5 : 0);
+        const y = startY + (endY - startY) * t;
 
-      {/* Optional label */}
+        return (
+          <text
+            key={i}
+            x={x}
+            y={y}
+            fontSize="14"
+            textAnchor="middle"
+            alignmentBaseline="middle"
+            fill={getTraceColor()}
+          >
+            {getSymbol()}
+          </text>
+        );
+      })}
+
+      {/* Label above center */}
       {label && (
         <text
-          x="50%"
-          dy="-10"
-          textAnchor="middle"
+          x={(startX + endX) / 2}
+          y={(startY + endY) / 2 - 20}
           fill={getTraceColor()}
+          textAnchor="middle"
           fontSize="12"
         >
           {label}
