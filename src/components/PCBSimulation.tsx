@@ -10,6 +10,7 @@ const PCBSimulation: React.FC = () => {
       path: [
         { x: 120, y: 130 },
         { x:  5,  y: 230},
+        { x:  5,  y: 320},
         { x: 200, y: 130 },
         { x: 200, y: 200 },
         { x: 300, y: 200 },
