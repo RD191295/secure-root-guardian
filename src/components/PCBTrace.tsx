@@ -17,7 +17,7 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
   label,
   chipRadius = 20,
 }) => {
-  // Outline color for the trace (fully transparent fill)
+  // Trace outline color
   const getTraceColor = () => {
     switch (type) {
       case 'power':
@@ -52,23 +52,24 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
 
   return (
     <g className="pcb-trace">
-      {/* Transparent inside, colored outline */}
+      {/* Hollow trace (only edge) */}
       <path
         d={pathD}
-        stroke={getTraceColor()} // colored outline
-        strokeWidth={12} // pipeline thickness
-        fill="none" // fully transparent inside
+        stroke={getTraceColor()}
+        strokeWidth={12}
+        fill="none"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
 
-      {/* Active faint pulse at midpoint */}
+      {/* Optional active moving dot inside the trace */}
       {isActive && (
         <circle
           cx={labelX}
           cy={labelY}
           r={6}
-          className="fill-cyan-400 animate-pulse opacity-30"
+          fill={getTraceColor()}
+          className="animate-ping opacity-50"
         />
       )}
 
