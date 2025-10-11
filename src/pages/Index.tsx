@@ -3,10 +3,10 @@ import { Shield, Play, Pause, RotateCcw, AlertTriangle, CheckCircle } from 'luci
 import { Chip3DEnvironment } from '../components/Chip3DEnvironment';
 import { useSecureBootState } from '../hooks/useSecureBootState';
 import { Z_INDEX } from '../components/zIndex';
+import PCBTrace from '../components/PCBTrace';
 
 const Index = () => {
   const [mode, setMode] = useState<'normal' | 'tampered'>('normal');
-  const [showInternals, setShowInternals] = useState(true);
   const [animationSpeed, setAnimationSpeed] = useState(1);
 
   const {
@@ -21,31 +21,55 @@ const Index = () => {
     stageData
   } = useSecureBootState(mode, animationSpeed);
 
+  // PCB Drawing State
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [currentPoints, setCurrentPoints] = useState<{ x: number; y: number }[]>([]);
+  const [pcbTraces, setPcbTraces] = useState<
+    { points: { x: number; y: number }[]; type: 'power' | 'data' | 'control'; label?: string }[]
+  >([]);
+
+  const startDrawing = () => {
+    setCurrentPoints([]);
+    setIsDrawing(true);
+  };
+
+  const finishDrawing = (type: 'power' | 'data' | 'control', label?: string) => {
+    if (currentPoints.length < 2) return;
+    setPcbTraces(prev => [...prev, { points: currentPoints, type, label }]);
+    setCurrentPoints([]);
+    setIsDrawing(false);
+  };
+
+  const handleCanvasClick = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (!isDrawing) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    setCurrentPoints(prev => [...prev, { x, y }]);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white flex">
       {/* Header */}
       <header className="absolute top-0 left-0 right-0 border-b border-gray-700 bg-gray-900/50 backdrop-blur-sm" style={{ zIndex: Z_INDEX.HEADER }}>
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-blue-600 rounded-lg">
-              <Shield className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-                3D Secure Boot Visualization
-              </h1>
-              <p className="text-gray-400 text-sm">Interactive SoC-level secure boot process with realistic chip environment</p>
-            </div>
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center space-x-3">
+          <div className="p-2 bg-blue-600 rounded-lg">
+            <Shield className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+              3D Secure Boot Visualization
+            </h1>
+            <p className="text-gray-400 text-sm">Interactive SoC-level secure boot process with PCB drawing</p>
           </div>
         </div>
       </header>
 
-      {/* Left Panel - Controls and Information */}
+      {/* Left Panel */}
       <div className="w-96 bg-gray-900/95 backdrop-blur-sm border-r border-gray-600 pt-24 overflow-y-auto">
         <div className="p-6 space-y-6">
           <div>
             <h2 className="text-xl font-bold text-white mb-4">Control Panel</h2>
-
             {/* Mode Selection */}
             <div className="flex space-x-2 mb-6">
               <button
@@ -73,48 +97,28 @@ const Index = () => {
             </div>
           </div>
 
+          {/* PCB Drawing Controls */}
           <div>
-            <h3 className="text-lg font-semibold text-white mb-3">Boot Progress</h3>
-            {/* Stage Progress */}
-            <div className="mb-6">
-              <div className="flex justify-between text-sm text-gray-400 mb-3">
-                <span>Current Stage</span>
-                <span>{currentStage} / {totalStages}</span>
-              </div>
-              <div className="w-full bg-gray-800 rounded-full h-3 mb-4">
-                <div
-                  className="bg-gradient-to-r from-blue-500 to-cyan-400 h-3 rounded-full transition-all duration-300"
-                  style={{ width: `${Math.min((currentStage / totalStages) * 100, 100)}%` }}
-                />
-              </div>
+            <h3 className="text-lg font-semibold text-white mb-3">PCB Trace Drawing</h3>
+            <div className="flex space-x-2 mb-2">
+              <button onClick={startDrawing} className="px-3 py-2 bg-blue-600 rounded text-white">Start Drawing</button>
+              <button onClick={() => finishDrawing('power', 'Power')} className="px-3 py-2 bg-red-600 rounded text-white">Finish Power Trace</button>
+              <button onClick={() => finishDrawing('data', 'Data')} className="px-3 py-2 bg-cyan-600 rounded text-white">Finish Data Trace</button>
+              <button onClick={() => finishDrawing('control', 'Control')} className="px-3 py-2 bg-green-600 rounded text-white">Finish Control Trace</button>
             </div>
+            <p className="text-gray-400 text-sm">Click on the canvas to add nodes while drawing.</p>
           </div>
 
-          <div>
-            <h3 className="text-lg font-semibold text-white mb-3">Current Stage</h3>
-            {/* Current Stage Info */}
-            <div className="mb-6 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
-              <div className="text-white font-semibold text-base mb-2">
-                {stageData.name}
-              </div>
-              <div className="text-gray-400 text-sm leading-relaxed">
-                {stageData.description}
-              </div>
-            </div>
-          </div>
-
+          {/* Playback Controls */}
           <div>
             <h3 className="text-lg font-semibold text-white mb-3">Playback Controls</h3>
-            {/* Controls */}
             <div className="flex items-center justify-center space-x-3 mb-6">
               <button
                 onClick={prevStage}
                 disabled={currentStage === 0}
                 className="p-3 rounded-lg bg-gray-800 text-white hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.334 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z" />
-                </svg>
+                Prev
               </button>
 
               <button
@@ -129,9 +133,7 @@ const Index = () => {
                 disabled={currentStage >= totalStages}
                 className="p-3 rounded-lg bg-gray-800 text-white hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.933 12.8a1 1 0 000-1.6L6.6 7.2A1 1 0 005 8v8a1 1 0 001.6.8l5.333-4zM19.933 12.8a1 1 0 000-1.6l-5.333-4A1 1 0 0013 8v8a1 1 0 001.6.8l5.333-4z" />
-                </svg>
+                Next
               </button>
 
               <button
@@ -142,47 +144,43 @@ const Index = () => {
               </button>
             </div>
           </div>
-
-          <div>
-            <h3 className="text-lg font-semibold text-white mb-3">Animation Speed</h3>
-            {/* Speed Control */}
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-400 min-w-[50px]">Speed:</span>
-              <input
-                type="range"
-                min={0.25}
-                max={3}
-                step={0.25}
-                value={animationSpeed}
-                onChange={(e) => setAnimationSpeed(parseFloat(e.target.value))}
-                className="flex-1 h-3 bg-gray-800 rounded-lg appearance-none cursor-pointer slider"
-              />
-              <span className="text-sm text-gray-400 min-w-[40px]">{animationSpeed}x</span>
-            </div>
-          </div>
         </div>
       </div>
 
-      {/* Right Panel - 3D Visualization */}
+      {/* Right Panel */}
       <div className="flex-1 pt-24 relative min-h-screen">
         <div className="absolute inset-0 pt-4">
+          {/* 3D Environment */}
           <Chip3DEnvironment
             mode={mode}
-            showInternals={showInternals}
             animationSpeed={animationSpeed}
             currentStage={currentStage}
           />
+
+          {/* Overlay SVG for PCB Drawing */}
+          <svg
+            width="100%"
+            height="100%"
+            className="absolute inset-0"
+            onClick={handleCanvasClick}
+          >
+            {/* Existing PCB Traces */}
+            {pcbTraces.map((trace, i) => (
+              <PCBTrace key={i} points={trace.points} type={trace.type} isActive />
+            ))}
+
+            {/* Current Drawing */}
+            {currentPoints.length > 0 && (
+              <PCBTrace points={currentPoints} type="data" isActive />
+            )}
+
+            {/* Visual nodes */}
+            {currentPoints.map((pt, idx) => (
+              <circle key={idx} cx={pt.x} cy={pt.y} r={4} fill="orange" />
+            ))}
+          </svg>
         </div>
       </div>
-
-      {/* Footer */}
-      <footer className="absolute bottom-0 left-0 right-0 border-t border-gray-700 bg-gray-900/50 backdrop-blur-sm py-3" style={{ zIndex: Z_INDEX.HEADER }}>
-        <div className="max-w-7xl mx-auto px-6">
-          <p className="text-center text-gray-400 text-sm">
-            Created by Raj Dalsaniya
-          </p>
-        </div>
-      </footer>
     </div>
   );
 };
