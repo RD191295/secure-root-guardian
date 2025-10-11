@@ -42,7 +42,7 @@ export const MODULES: Module[] = [
     name: 'OTP/eFuse',
     type: 'otp',
     position: { x: 520, y: 50, z: 0 },
-    size: { width: 140, height: 100, depth: 20 },
+    size: { width: 140, height: 140, depth: 20 },
     color: 'from-orange-800 to-orange-600',
     isActive: false,
     description: 'One-Time Programmable Memory'
