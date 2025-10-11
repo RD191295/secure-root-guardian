@@ -9,14 +9,24 @@ const PCBSimulation: React.FC = () => {
     { from: { x: 680, y: 380 }, to: { x: 500, y: 250 }, type: 'data', label: 'OUT' },
   ];
 
-  const [activeTraces, setActiveTraces] = useState<number[]>([0,1,2,3]);
+  // Track which traces are complete
+  const [traceStages, setTraceStages] = useState([false, false, false, false]);
 
-  // Optional: random activation to simulate “data passing” intermittently
+  // Simulate stage completion over time
   useEffect(() => {
+    let i = 0;
     const interval = setInterval(() => {
-      const newActive = Array.from({ length: traces.length }, (_,i) => i).filter(() => Math.random()>0.3);
-      setActiveTraces(newActive.length ? newActive : [0]);
-    }, 2000);
+      if (i < traces.length) {
+        setTraceStages(prev => {
+          const newStages = [...prev];
+          newStages[i] = true; // mark current trace as complete
+          return newStages;
+        });
+        i++;
+      } else {
+        clearInterval(interval);
+      }
+    }, 3000); // each stage completes after 3 seconds
     return () => clearInterval(interval);
   }, []);
 
@@ -30,15 +40,16 @@ const PCBSimulation: React.FC = () => {
         <rect x="640" y="350" width="80" height="60" rx="10" fill="#facc15" stroke="#eab308" />
 
         {/* PCB traces */}
-        {traces.map((trace,i)=>(
+        {traces.map((trace, i) => (
           <PCBTrace
+            key={i}
             from={trace.from}
             to={trace.to}
-            isActive={true}
+            isActive={!traceStages[i]}   // only active if stage not complete
             type={trace.type}
             label={trace.label}
             dotCount={3}
-            progress={traceStage[i]} // 0 = ongoing, 1 = complete
+            stageComplete={traceStages[i]} // hide when stage complete
           />
         ))}
       </svg>
