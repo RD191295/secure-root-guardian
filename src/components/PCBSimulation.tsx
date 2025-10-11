@@ -32,14 +32,13 @@ const PCBSimulation: React.FC = () => {
         {/* PCB traces */}
         {traces.map((trace,i)=>(
           <PCBTrace
-            key={i}
             from={trace.from}
             to={trace.to}
-            isActive={activeTraces.includes(i)}
+            isActive={true}
             type={trace.type}
             label={trace.label}
             dotCount={3}
-            speed={0.01}
+            progress={traceStage[i]} // 0 = ongoing, 1 = complete
           />
         ))}
       </svg>
