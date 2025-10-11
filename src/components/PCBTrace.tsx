@@ -8,7 +8,7 @@ interface PCBTraceProps {
   label?: string;
   chipRadius?: number;
   dotCount?: number;
-  progress?: number; // 0 → in progress, 1 → stage complete
+  stageComplete?: boolean; // true → hide trace completely
 }
 
 const PCBTrace: React.FC<PCBTraceProps> = ({
@@ -19,7 +19,7 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
   label,
   chipRadius = 20,
   dotCount = 5,
-  progress = 0,
+  stageComplete = false,
 }) => {
   const [dots, setDots] = useState<number[]>([]);
   const [dotSymbols, setDotSymbols] = useState<string[]>([]);
@@ -61,21 +61,23 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
     return { x, y };
   };
 
-  // Animate dots only if stage not complete
+  // Animate dots only if active and stage not complete
   useEffect(() => {
-    if (!isActive || progress >= 1) return;
+    if (!isActive || stageComplete) return;
     const interval = setInterval(() => {
       setDots(prev => prev.map((p, i) => (p + dotSpeeds[i]) % 1));
     }, 16);
     return () => clearInterval(interval);
-  }, [isActive, dotSpeeds, progress]);
+  }, [isActive, dotSpeeds, stageComplete]);
+
+  if (stageComplete) return null; // hide entire trace and symbols
 
   const labelX = (from.x + to.x) / 2;
   const labelY = (from.y + to.y) / 2;
 
   return (
     <g>
-      {/* Big trace pipe */}
+      {/* Big trace “pipe” */}
       <path
         d={`M${from.x},${from.y} Q${ctrlX},${ctrlY} ${to.x},${to.y}`}
         stroke={getColor()}
@@ -86,7 +88,7 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
         opacity={0.2}
       />
 
-      {/* Hollow edge */}
+      {/* Hollow outline */}
       <path
         d={`M${from.x},${from.y} Q${ctrlX},${ctrlY} ${to.x},${to.y}`}
         stroke={getColor()}
@@ -96,8 +98,8 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
         strokeLinejoin="round"
       />
 
-      {/* Moving data packets (only if stage not complete) */}
-      {isActive && progress < 1 &&
+      {/* Moving packets */}
+      {isActive &&
         dots.map((t, i) => {
           const { x, y } = getDotCoord(t);
           return (
@@ -114,8 +116,7 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
               {dotSymbols[i]}
             </text>
           );
-        })
-      }
+        })}
 
       {/* Label */}
       {label && (
