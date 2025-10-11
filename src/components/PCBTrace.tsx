@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 interface PCBTraceProps {
   from: { x: number; y: number };
@@ -7,6 +7,7 @@ interface PCBTraceProps {
   type: 'power' | 'data' | 'control';
   label?: string;
   chipRadius?: number;
+  speed?: number; // speed of the moving dot
 }
 
 const PCBTrace: React.FC<PCBTraceProps> = ({
@@ -16,8 +17,11 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
   type,
   label,
   chipRadius = 20,
+  speed = 0.01, // fraction per frame
 }) => {
-  // Trace outline color
+  const [progress, setProgress] = useState(0);
+
+  // Trace color based on type
   const getTraceColor = () => {
     switch (type) {
       case 'power':
@@ -47,37 +51,64 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
   const midY = endY;
   const pathD = `M ${startX},${startY} L ${midX},${midY} L ${endX},${endY}`;
 
-  const labelX = (startX + endX) / 2;
-  const labelY = (startY + endY) / 2;
+  // Use simple linear interpolation for moving dot along L-shape
+  const getDotPosition = (t: number) => {
+    if (t < 0.5) {
+      const p = t * 2; // first segment
+      return {
+        x: startX + (midX - startX) * p,
+        y: startY + (midY - startY) * p,
+      };
+    } else {
+      const p = (t - 0.5) * 2; // second segment
+      return {
+        x: midX + (endX - midX) * p,
+        y: midY + (endY - midY) * p,
+      };
+    }
+  };
+
+  // Animate the moving dot
+  useEffect(() => {
+    if (!isActive) return;
+
+    const id = requestAnimationFrame(function animate() {
+      setProgress((prev) => (prev + speed) % 1);
+      requestAnimationFrame(animate);
+    });
+
+    return () => cancelAnimationFrame(id);
+  }, [isActive, speed]);
+
+  const dotPos = getDotPosition(progress);
 
   return (
     <g className="pcb-trace">
-      {/* Hollow trace (only edge) */}
-      {/* Stock outline (behind) */}
-        <path
-          d={pathD}
-          stroke="#CCCCCC"     // outline color
-          strokeWidth={8}      // slightly thicker
-          fill="none"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        
-        {/* Main hollow trace */}
-        <path
-          d={pathD}
-          stroke={getTraceColor()} // main trace color
-          strokeWidth={4}           // slightly thinner
-          fill="none"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+      {/* Stock outline */}
+      <path
+        d={pathD}
+        stroke="#CCCCCC"
+        strokeWidth={8}
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
 
-      {/* Optional active moving dot inside the trace */}
+      {/* Main hollow trace */}
+      <path
+        d={pathD}
+        stroke={getTraceColor()}
+        strokeWidth={4}
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+
+      {/* Moving dot */}
       {isActive && (
         <circle
-          cx={labelX}
-          cy={labelY}
+          cx={dotPos.x}
+          cy={dotPos.y}
           r={6}
           fill={getTraceColor()}
           className="animate-ping opacity-50"
@@ -85,10 +116,10 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
       )}
 
       {/* Optional label */}
-      {label && isActive && (
+      {label && (
         <text
-          x={labelX}
-          y={labelY - 15}
+          x={(startX + endX) / 2}
+          y={(startY + endY) / 2 - 15}
           className="fill-gray-300 text-xs font-mono"
           textAnchor="middle"
         >
