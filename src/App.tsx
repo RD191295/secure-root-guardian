@@ -176,13 +176,6 @@ function App() {
       </div>
 
       {/* Footer */}
-      <footer className="absolute bottom-0 left-0 right-0 border-t border-gray-700 bg-gray-900/50 backdrop-blur-sm py-3" style={{ zIndex: Z_INDEX.HEADER }}>
-        <div className="max-w-7xl mx-auto px-6">
-          <p className="text-center text-gray-400 text-sm">
-            Created by Raj Dalsaniya
-          </p>
-        </div>
-      </footer>
     </div>
   );
 }
