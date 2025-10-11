@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Play, Pause } from 'lucide-react';
 import PCBTrace from './PCBTrace';
 
 const PCBSimulation: React.FC = () => {
@@ -9,11 +10,17 @@ const PCBSimulation: React.FC = () => {
     { from: { x: 680, y: 380 }, to: { x: 500, y: 250 }, type: 'data', label: 'OUT' },
   ];
 
+  // Play/Pause simulation
+  const [isPlaying, setIsPlaying] = useState(false);
+  const play = () => setIsPlaying(true);
+  const pause = () => setIsPlaying(false);
+
   // Track which traces are complete
   const [traceStages, setTraceStages] = useState([false, false, false, false]);
 
-  // Simulate stage completion over time
+  // Automatically complete stages when simulation is playing
   useEffect(() => {
+    if (!isPlaying) return;
     let i = 0;
     const interval = setInterval(() => {
       if (i < traces.length) {
@@ -26,12 +33,21 @@ const PCBSimulation: React.FC = () => {
       } else {
         clearInterval(interval);
       }
-    }, 3000); // each stage completes after 3 seconds
+    }, 3000); // each stage completes after 3s
     return () => clearInterval(interval);
-  }, []);
+  }, [isPlaying]);
 
   return (
-    <div className="flex justify-center items-center h-[600px] bg-slate-950">
+    <div className="flex flex-col items-center h-[600px] bg-slate-950 p-4">
+      {/* Play/Pause Button */}
+      <button
+        onClick={isPlaying ? pause : play}
+        className="p-4 rounded-lg bg-blue-600 text-white hover:bg-blue-500 transition-colors mb-4"
+      >
+        {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
+      </button>
+
+      {/* PCB Simulation */}
       <svg width="800" height="500" viewBox="0 0 800 500">
         {/* Chips */}
         <rect x="80" y="100" width="80" height="60" rx="10" fill="#f87171" stroke="#ef4444" />
@@ -39,17 +55,17 @@ const PCBSimulation: React.FC = () => {
         <rect x="640" y="100" width="80" height="60" rx="10" fill="#60a5fa" stroke="#3b82f6" />
         <rect x="640" y="350" width="80" height="60" rx="10" fill="#facc15" stroke="#eab308" />
 
-        {/* PCB traces */}
-        {traces.map((trace, i) => (
+        {/* PCB Traces */}
+        {isPlaying && traces.map((trace, i) => (
           <PCBTrace
             key={i}
             from={trace.from}
             to={trace.to}
-            isActive={!traceStages[i]}   // only active if stage not complete
+            isActive={!traceStages[i]}       // active if stage not complete
             type={trace.type}
             label={trace.label}
             dotCount={3}
-            stageComplete={traceStages[i]} // hide when stage complete
+            stageComplete={traceStages[i]}   // hide when stage complete
           />
         ))}
       </svg>
