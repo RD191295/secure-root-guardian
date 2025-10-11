@@ -53,14 +53,25 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
   return (
     <g className="pcb-trace">
       {/* Hollow trace (only edge) */}
-      <path
-        d={pathD}
-        stroke={getTraceColor()}
-        strokeWidth={6}
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      {/* Stock outline (behind) */}
+        <path
+          d={pathD}
+          stroke="#CCCCCC"     // outline color
+          strokeWidth={8}      // slightly thicker
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        
+        {/* Main hollow trace */}
+        <path
+          d={pathD}
+          stroke={getTraceColor()} // main trace color
+          strokeWidth={4}           // slightly thinner
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
 
       {/* Optional active moving dot inside the trace */}
       {isActive && (
