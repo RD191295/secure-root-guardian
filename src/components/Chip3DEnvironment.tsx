@@ -33,7 +33,7 @@ export const Chip3DEnvironment: React.FC<Chip3DEnvironmentProps> = ({
       if (!mod) return { x: 0, y: 0 };
       return {
         x: mod.position.x + mod.size.width/2,
-        y: mod.position.y + mod.size.height
+        y: mod.position.y + mod.size.height/2
       };
     };
 
