@@ -24,7 +24,6 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
   const [dots, setDots] = useState<number[]>([]);
   const [dotSymbols, setDotSymbols] = useState<string[]>([]);
   const [dotSpeeds, setDotSpeeds] = useState<number[]>([]);
-  const [opacity, setOpacity] = useState(1); // for fade-out
 
   // Initialize moving dots
   useEffect(() => {
@@ -54,6 +53,7 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
     }
   };
 
+  // Control point for smooth curve (quadratic Bezier)
   const ctrlX = (from.x + to.x) / 2;
   const ctrlY = from.y;
 
@@ -72,29 +72,14 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
     return () => clearInterval(interval);
   }, [isActive, dotSpeeds, stageComplete]);
 
-  // Fade-out effect when stage completes
-  useEffect(() => {
-    if (!stageComplete) {
-      setOpacity(1);
-      return;
-    }
-    let animFrame: number;
-    const fade = () => {
-      setOpacity(prev => {
-        if (prev <= 0) return 0;
-        animFrame = requestAnimationFrame(fade);
-        return prev - 0.02;
-      });
-    };
-    fade();
-    return () => cancelAnimationFrame(animFrame);
-  }, [stageComplete]);
+  // Hide trace entirely if stage complete or simulation not active
+  if (stageComplete || !isActive) return null;
 
-  // Hide completely if fully faded
-  if (!isActive && !stageComplete && opacity <= 0) return null;
+  const labelX = (from.x + to.x) / 2;
+  const labelY = (from.y + to.y) / 2;
 
   return (
-    <g opacity={opacity}>
+    <g>
       {/* Big semi-transparent pipeline */}
       <path
         d={`M${from.x},${from.y} Q${ctrlX},${ctrlY} ${to.x},${to.y}`}
@@ -138,8 +123,8 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
       {/* Optional label */}
       {label && (
         <text
-          x={(from.x + to.x) / 2}
-          y={(from.y + to.y) / 2 - 15}
+          x={labelX}
+          y={labelY - 15}
           className="fill-gray-300 text-xs font-mono"
           textAnchor="middle"
         >
