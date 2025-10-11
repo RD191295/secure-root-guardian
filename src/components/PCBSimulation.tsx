@@ -63,17 +63,14 @@ const PCBSimulation: React.FC = () => {
             key={i}
             from={trace.from}
             to={trace.to}
-            isActive={
-              isPlaying && // only visible if simulation is playing
-              !traceStages[i] && // not yet completed
-              (dependencies[i] === null || traceStages[dependencies[i]]) // dependency satisfied
-            }
+            isActive={isPlaying && !traceStages[i]}
             type={trace.type}
             label={trace.label}
             dotCount={3}
             stageComplete={traceStages[i]}
-            mergePoint={i === 1 || i === 3 ? mergePoint : undefined}
+            payload={trace.payload} // e.g., 'key' | 'data' | 'power'
           />
+
         ))}
       </svg>
     </div>
