@@ -18,16 +18,7 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
   chipRadius = 20,
 }) => {
   const getTraceColor = () => {
-    switch (type) {
-      case 'power':
-        return isActive ? 'stroke-red-500' : 'stroke-red-900';
-      case 'data':
-        return isActive ? 'stroke-cyan-400' : 'stroke-cyan-900';
-      case 'control':
-        return isActive ? 'stroke-green-400' : 'stroke-green-900';
-      default:
-        return 'stroke-gray-500';
-    }
+     return isActive ? 'stroke-cyan-400/70' : 'stroke-cyan-400/30';
   };
 
   // --- Geometry math ---
