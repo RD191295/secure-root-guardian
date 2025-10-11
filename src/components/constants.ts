@@ -21,7 +21,7 @@ export const MODULES: Module[] = [
     id: 'pmu',
     name: 'Power Management Unit',
     type: 'pmu',
-    position: { x: 50, y: 50, z: 0 },
+    position: { x: 50, y: 50, z: 10 },
     size: { width: 210, height: 180, depth: 20 },
     color: 'from-red-800 to-red-600',
     isActive: false,
