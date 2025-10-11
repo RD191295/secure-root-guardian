@@ -10,13 +10,16 @@ const PCBSimulation: React.FC = () => {
     { from: { x: 680, y: 380 }, to: { x: 500, y: 250 }, type: 'data', label: 'OUT' },
   ];
 
+  // dependencies: index of trace that must complete before current trace starts
+  const dependencies = [null, 0, null, 1];
+
   const [isPlaying, setIsPlaying] = useState(false);
   const [traceStages, setTraceStages] = useState([false, false, false, false]);
 
   const play = () => setIsPlaying(true);
   const pause = () => setIsPlaying(false);
 
-  // Automatically complete stages when simulation is running
+  // Automatically progress stages
   useEffect(() => {
     if (!isPlaying) return;
     let i = 0;
@@ -35,9 +38,11 @@ const PCBSimulation: React.FC = () => {
     return () => clearInterval(interval);
   }, [isPlaying]);
 
+  // Calculate merge points: here, the central chip at (300,250) is shared
+  const mergePoint = { x: 300, y: 250 };
+
   return (
     <div className="flex flex-col items-center h-[600px] bg-slate-950 p-4">
-      {/* Play/Pause button */}
       <button
         onClick={isPlaying ? pause : play}
         className="p-4 rounded-lg bg-blue-600 text-white hover:bg-blue-500 transition-colors mb-4"
@@ -45,7 +50,6 @@ const PCBSimulation: React.FC = () => {
         {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
       </button>
 
-      {/* PCB Simulation */}
       <svg width="800" height="500" viewBox="0 0 800 500">
         {/* Chips */}
         <rect x="80" y="100" width="80" height="60" rx="10" fill="#f87171" stroke="#ef4444" />
@@ -59,11 +63,16 @@ const PCBSimulation: React.FC = () => {
             key={i}
             from={trace.from}
             to={trace.to}
-            isActive={isPlaying && !traceStages[i]} // visible only if simulation running and stage not complete
+            isActive={
+              isPlaying &&
+              !traceStages[i] &&
+              (dependencies[i] === null || traceStages[dependencies[i]])
+            }
             type={trace.type}
             label={trace.label}
             dotCount={3}
-            stageComplete={traceStages[i]} // hide when stage is complete
+            stageComplete={traceStages[i]}
+            mergePoint={i === 1 || i === 3 ? mergePoint : undefined} // show merge for traces connecting central chip
           />
         ))}
       </svg>
