@@ -9,6 +9,10 @@ const PCBSimulation: React.FC = () => {
       id: "t1",
       path: [
         { x: 120, y: 130 },
+        { x: 110, y: 410},
+        { x: 200, y: 130 },
+        { x: 200, y: 200 },
+        { x: 300, y: 200 },
       
       ],
       type: "power",
