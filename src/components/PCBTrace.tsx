@@ -56,7 +56,7 @@ const PCBTrace: React.FC<PCBTraceProps> = ({
       <path
         d={pathD}
         stroke={getTraceColor()}
-        strokeWidth={12}
+        strokeWidth={6}
         fill="none"
         strokeLinecap="round"
         strokeLinejoin="round"
