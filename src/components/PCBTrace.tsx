@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 
 interface PCBTraceProps {
   points: { x: number; y: number }[];
@@ -10,7 +10,9 @@ interface PCBTraceProps {
 const PCBTrace: React.FC<PCBTraceProps> = ({ points, isActive, type, label }) => {
   if (!points || points.length < 2) return null;
 
-  // Generate smooth path (quadratic curves)
+  const packetRef = useRef<SVGCircleElement | null>(null);
+
+  // Generate smooth path
   let pathD = `M ${points[0].x},${points[0].y}`;
   for (let i = 1; i < points.length; i++) {
     const prev = points[i - 1];
@@ -22,34 +24,54 @@ const PCBTrace: React.FC<PCBTraceProps> = ({ points, isActive, type, label }) =>
 
   const getTraceColor = () => {
     switch (type) {
-      case 'power': return 'red';
-      case 'data': return 'cyan';
-      case 'control': return 'yellow';
-      default: return 'gray';
+      case 'power': return '#ff4040';
+      case 'data': return '#00ffff';
+      case 'control': return '#ffd700';
+      default: return '#888';
     }
   };
 
+  // Animate the "data packet" along the path
+  useEffect(() => {
+    if (!isActive || !packetRef.current) return;
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', pathD);
+    const length = path.getTotalLength();
+    let start = 0;
+
+    const move = () => {
+      if (packetRef.current) {
+        const point = path.getPointAtLength(start);
+        packetRef.current.setAttribute('cx', point.x.toString());
+        packetRef.current.setAttribute('cy', point.y.toString());
+        start = (start + 3) % length; // speed
+      }
+      requestAnimationFrame(move);
+    };
+
+    move();
+  }, [isActive, pathD]);
+
   return (
-    <g>
-      {/* Path outline */}
+    <g opacity={isActive ? 1 : 0.15}>
       <path
         d={pathD}
-        stroke="#555"
+        stroke="#333"
         strokeWidth={8}
         fill="none"
         strokeLinecap="round"
-        strokeLinejoin="round"
       />
-      {/* Main trace */}
       <path
         d={pathD}
         stroke={getTraceColor()}
         strokeWidth={4}
         fill="none"
         strokeLinecap="round"
-        strokeLinejoin="round"
+        strokeDasharray={isActive ? "6 6" : "0"}
+        style={{
+          animation: isActive ? 'dash 1.2s linear infinite' : 'none'
+        }}
       />
-      {/* Optional label */}
       {label && (
         <text
           x={(points[0].x + points[points.length - 1].x) / 2}
@@ -60,6 +82,17 @@ const PCBTrace: React.FC<PCBTraceProps> = ({ points, isActive, type, label }) =>
         >
           {label}
         </text>
+      )}
+
+      {/* Animated data packet */}
+      {isActive && (
+        <circle
+          ref={packetRef}
+          r={6}
+          fill={getTraceColor()}
+          stroke="white"
+          strokeWidth={1.5}
+        />
       )}
     </g>
   );
