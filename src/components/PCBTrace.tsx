@@ -5,13 +5,13 @@ interface PCBTraceProps {
   isActive: boolean;
   type: 'power' | 'data' | 'control';
   label?: string;
-  offset?: number; // new
+  offset?: number;
 }
 
 const PCBTrace: React.FC<PCBTraceProps> = ({ points, isActive, type, label, offset = 0 }) => {
   if (!points || points.length < 2) return null;
 
-  // Generate smooth path (quadratic curves) with offset
+  // Smooth quadratic path with offset
   let pathD = `M ${points[0].x},${points[0].y + offset}`;
   for (let i = 1; i < points.length; i++) {
     const prev = points[i - 1];
@@ -47,6 +47,7 @@ const PCBTrace: React.FC<PCBTraceProps> = ({ points, isActive, type, label, offs
         fill="none"
         strokeLinecap="round"
         strokeLinejoin="round"
+        style={{ filter: isActive ? 'url(#glow)' : 'none' }}
       />
       {label && (
         <text
