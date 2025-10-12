@@ -31,16 +31,7 @@ export const Chip3DEnvironment: React.FC<Chip3DEnvironmentProps> = ({
   // Manual traces to avoid overlap
   const traces = useMemo(() => [
     { points: [{ x: 215, y: 140 }, { x: 300, y: 140 }, { x: 600, y: 490 }], type: 'power', label: 'Power', active: currentStage >= 1 },
-    { points: [{ x: 215, y: 140 }, { x: 300, y: 140 }, { x: 320, y: 140 }, { x: 600, y: 140 }], type: 'power', label: 'Power', active: currentStage >= 1 },
-    { points: [{ x: 215, y: 140 }, { x: 270, y: 140 }, { x: 320, y: 140 }], type: 'power', label: 'Power', active: currentStage >= 1 },
-    { points: [{ x: 215, y: 140 }, { x: 70, y: 400 }], type: 'power', label: 'Power', active: currentStage >= 1 },
-    { points: [{ x: 215, y: 140 }, { x: 320, y: 320 }], type: 'power', label: 'Power', active: currentStage >= 1 },
-    { points: [{ x: 600, y: 490 }, { x: 600, y: 140 }], type: 'control', label: 'Key Request', active: currentStage === 2 },
-    { points: [{ x: 600, y: 140 }, { x: 470, y: 140 }, { x: 400, y: 140 }], type: 'data', label: 'Public Key', active: currentStage === 4 },
-    { points: [{ x: 70, y: 400 }, { x: 190, y: 400 }, { x: 320, y: 320 }], type: 'data', label: 'Bootloader', active: currentStage === 3 },
-    { points: [{ x: 600, y: 490 }, { x: 520, y: 200 }, { x: 400, y: 140 }], type: 'data', label: 'Hash+Sig', active: currentStage === 4 },
-    { points: [{ x: 400, y: 140 }, { x: 520, y: 200 }, { x: 600, y: 490 }], type: 'control', label: mode === 'tampered' ? 'FAIL' : 'PASS', active: currentStage === 5 },
-    { points: [{ x: 600, y: 490 }, { x: 470, y: 400 }, { x: 320, y: 320 }], type: 'control', label: 'Boot', active: currentStage >= 6 && mode === 'normal' },
+  
   ], [currentStage, mode]);
 
   const bootStatus = getBootStatus(flags, mode, currentStage);
