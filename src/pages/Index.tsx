@@ -4,22 +4,31 @@ import { Chip3DEnvironment } from '../components/Chip3DEnvironment';
 import { useSecureBootState } from '../hooks/useSecureBootState';
 import { Z_INDEX } from '../components/zIndex';
 import PCBTrace from '../components/PCBTrace';
+import { BootTimeline } from '../components/BootTimeline';
+import { BootLogsPanel } from '../components/BootLogsPanel';
+import { useBootLogs } from '../hooks/useBootLogs';
 
 const Index = () => {
   const [mode, setMode] = useState<'normal' | 'tampered'>('normal');
   const [animationSpeed, setAnimationSpeed] = useState(1);
+  const [isLogsPanelOpen, setIsLogsPanelOpen] = useState(true);
 
   const {
     currentStage,
     isPlaying,
     totalStages,
+    stages,
     play,
     pause,
     nextStage,
     prevStage,
     reset,
-    stageData
+    stageData,
+    goToStage
   } = useSecureBootState(mode, animationSpeed);
+
+  // Boot logs
+  const { logs, clearLogs } = useBootLogs(currentStage, mode);
 
   // PCB Drawing State
   const [isDrawing, setIsDrawing] = useState(false);
@@ -49,9 +58,9 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white flex">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white flex flex-col">
       {/* Header */}
-      <header className="absolute top-0 left-0 right-0 border-b border-gray-700 bg-gray-900/50 backdrop-blur-sm" style={{ zIndex: Z_INDEX.HEADER }}>
+      <header className="border-b border-gray-700 bg-gray-900/50 backdrop-blur-sm" style={{ zIndex: Z_INDEX.HEADER }}>
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center space-x-3">
           <div className="p-2 bg-blue-600 rounded-lg">
             <Shield className="w-6 h-6" />
@@ -65,8 +74,22 @@ const Index = () => {
         </div>
       </header>
 
-      {/* Left Panel */}
-      <div className="w-96 bg-gray-900/95 backdrop-blur-sm border-r border-gray-600 pt-24 overflow-y-auto">
+      {/* Timeline */}
+      <div style={{ zIndex: Z_INDEX.TIMELINE }}>
+        <BootTimeline
+          currentStage={currentStage}
+          totalStages={totalStages}
+          stages={stages}
+          onStageClick={goToStage}
+          mode={mode}
+        />
+      </div>
+
+      {/* Main Content */}
+      <div className="flex flex-1 overflow-hidden">
+
+        {/* Left Panel */}
+        <div className="w-96 bg-gray-900/95 backdrop-blur-sm border-r border-gray-600 overflow-y-auto">
         <div className="p-6 space-y-6">
           <div>
             <h2 className="text-xl font-bold text-white mb-4">Control Panel</h2>
@@ -147,8 +170,8 @@ const Index = () => {
         </div>
       </div>
 
-      {/* Right Panel */}
-      <div className="flex-1 pt-24 relative min-h-screen">
+        {/* Right Panel */}
+        <div className="flex-1 relative overflow-hidden">
         <div className="absolute inset-0 pt-4">
           {/* 3D Environment */}
           <Chip3DEnvironment
@@ -200,7 +223,16 @@ const Index = () => {
             </svg>
           )}
         </div>
+        </div>
       </div>
+
+      {/* Boot Logs Panel */}
+      <BootLogsPanel
+        logs={logs}
+        isOpen={isLogsPanelOpen}
+        onToggle={() => setIsLogsPanelOpen(!isLogsPanelOpen)}
+        onClearLogs={clearLogs}
+      />
     </div>
   );
 };

@@ -190,6 +190,7 @@ export const useSecureBootState = (mode: 'normal' | 'tampered', animationSpeed: 
   return {
     currentStage,
     stageData: stages[currentStage] || stages[0],
+    stages, // Export full stages array
     state: flags,
     registers,
     memory,

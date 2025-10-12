@@ -6,7 +6,9 @@ export const Z_INDEX = {
   OVERLAYS: 20,
   TOOLTIPS: 30,
   POPUPS: 40,
-  MODALS: 50,
   MODAL_BACKDROP: 45,
+  MODALS: 50,
+  LOGS_PANEL: 85,
+  TIMELINE: 90,
   HEADER: 100,
 } as const;
