@@ -1,147 +1,57 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React from 'react';
 
 interface PCBTraceProps {
   points: { x: number; y: number }[];
   isActive: boolean;
   type: 'power' | 'data' | 'control';
   label?: string;
-  currentStage: number;
-  totalStages: number;
+  offset?: number; // new
 }
 
-const stageColors = [
-  '#00ffff', // Stage 0-1
-  '#4cff00', // Stage 2
-  '#ffea00', // Stage 3
-  '#ff6a00', // Stage 4
-  '#ff0000', // Stage 5
-  '#c700ff', // Stage 6
-];
-
-const PCBTrace: React.FC<PCBTraceProps> = ({ points, isActive, type, label, currentStage, totalStages }) => {
-  const pathRef = useRef<SVGPathElement>(null);
-  const [packetValue, setPacketValue] = useState(Math.floor(Math.random() * 99));
-  const [trail, setTrail] = useState<{ x: number; y: number; opacity: number; color: string }[]>([]);
-  const packetProgress = useRef(0);
-
+const PCBTrace: React.FC<PCBTraceProps> = ({ points, isActive, type, label, offset = 0 }) => {
   if (!points || points.length < 2) return null;
 
-  // Generate smooth quadratic path
-  let pathD = `M ${points[0].x},${points[0].y}`;
+  // Generate smooth path (quadratic curves) with offset
+  let pathD = `M ${points[0].x},${points[0].y + offset}`;
   for (let i = 1; i < points.length; i++) {
     const prev = points[i - 1];
     const curr = points[i];
     const midX = (prev.x + curr.x) / 2;
-    const midY = (prev.y + curr.y) / 2;
-    pathD += ` Q ${midX},${midY} ${curr.x},${curr.y}`;
+    const midY = (prev.y + curr.y) / 2 + offset;
+    pathD += ` Q ${midX},${midY} ${curr.x},${curr.y + offset}`;
   }
 
   const getTraceColor = () => {
     switch (type) {
-      case 'power': return '#ff4444';
-      case 'data': return '#00ffff';
-      case 'control': return '#ffff55';
-      default: return '#888';
+      case 'power': return 'red';
+      case 'data': return 'cyan';
+      case 'control': return 'yellow';
+      default: return 'gray';
     }
   };
-
-  const getStageColor = () => stageColors[Math.min(currentStage, stageColors.length - 1)];
-
-  useEffect(() => {
-    if (!isActive) {
-      packetProgress.current = 0;
-      setTrail([]);
-      return;
-    }
-
-    let animationFrame: number;
-
-    const animate = () => {
-      const pathEl = pathRef.current;
-      if (!pathEl) return;
-
-      const pathLength = pathEl.getTotalLength();
-      const point = pathEl.getPointAtLength(packetProgress.current * pathLength);
-
-      // Add to trail with stage-based color
-      setTrail(trail => {
-        const newTrail = [{ x: point.x, y: point.y, opacity: 1, color: getStageColor() }, ...trail];
-        return newTrail.slice(0, 25);
-      });
-
-      packetProgress.current += 0.002; // controls speed
-      if (packetProgress.current >= 1) {
-        packetProgress.current = 0;
-        setPacketValue(Math.floor(Math.random() * 99));
-      }
-
-      animationFrame = requestAnimationFrame(animate);
-    };
-
-    animate();
-
-    return () => cancelAnimationFrame(animationFrame);
-  }, [isActive, currentStage]);
-
-  useEffect(() => {
-    const fadeInterval = setInterval(() => {
-      setTrail(trail => trail.map(t => ({ ...t, opacity: t.opacity * 0.85 })).filter(t => t.opacity > 0.05));
-    }, 50);
-    return () => clearInterval(fadeInterval);
-  }, []);
 
   return (
     <g>
       <path
         d={pathD}
-        stroke="#222"
+        stroke="#555"
         strokeWidth={8}
         fill="none"
         strokeLinecap="round"
+        strokeLinejoin="round"
       />
       <path
-        ref={pathRef}
         d={pathD}
         stroke={getTraceColor()}
         strokeWidth={4}
         fill="none"
         strokeLinecap="round"
         strokeLinejoin="round"
-        opacity={isActive ? 1 : 0.2}
       />
-
-      {/* Glow trail with stage-based color */}
-      {trail.map((t, idx) => (
-        <circle
-          key={idx}
-          cx={t.x}
-          cy={t.y}
-          r={6}
-          fill={t.color}
-          opacity={t.opacity}
-          filter="url(#glow)"
-        />
-      ))}
-
-      {/* Moving packet */}
-      {isActive && type === 'data' && (
-        <text
-          x={trail[0]?.x || 0}
-          y={trail[0]?.y || 0}
-          fill={getStageColor()}
-          fontSize={12}
-          textAnchor="middle"
-          dominantBaseline="middle"
-          fontFamily="monospace"
-        >
-          {packetValue.toString().padStart(2, '0')}
-        </text>
-      )}
-
       {label && (
         <text
           x={(points[0].x + points[points.length - 1].x) / 2}
-          y={(points[0].y + points[points.length - 1].y) / 2 - 10}
+          y={(points[0].y + points[points.length - 1].y) / 2 - 10 + offset}
           fill="white"
           fontSize={12}
           textAnchor="middle"
