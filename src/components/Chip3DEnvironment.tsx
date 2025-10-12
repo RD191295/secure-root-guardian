@@ -30,7 +30,7 @@ export const Chip3DEnvironment: React.FC<Chip3DEnvironmentProps> = ({
 
   // Manual traces to avoid overlap
   const traces = useMemo(() => [
-    { points: [{ x: 315, y: 140 }, { x: 300, y: 140 }, { x: 600, y: 490 }], type: 'power', label: 'Power', active: currentStage >= 1 },
+    { points: [{ x: 320, y: 145 }, { x: 330, y: 140 }, { x: 600, y: 490 }], type: 'power', label: 'Power', active: currentStage >= 1 },
   
   ], [currentStage, mode]);
 
