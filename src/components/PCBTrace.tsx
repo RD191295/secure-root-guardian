@@ -5,17 +5,28 @@ interface PCBTraceProps {
   isActive: boolean;
   type: 'power' | 'data' | 'control';
   label?: string;
+  currentStage: number;
+  totalStages: number;
 }
 
-const PCBTrace: React.FC<PCBTraceProps> = ({ points, isActive, type, label }) => {
+const stageColors = [
+  '#00ffff', // Stage 0-1
+  '#4cff00', // Stage 2
+  '#ffea00', // Stage 3
+  '#ff6a00', // Stage 4
+  '#ff0000', // Stage 5
+  '#c700ff', // Stage 6
+];
+
+const PCBTrace: React.FC<PCBTraceProps> = ({ points, isActive, type, label, currentStage, totalStages }) => {
   const pathRef = useRef<SVGPathElement>(null);
   const [packetValue, setPacketValue] = useState(Math.floor(Math.random() * 99));
-  const [trail, setTrail] = useState<{ x: number; y: number; opacity: number }[]>([]);
+  const [trail, setTrail] = useState<{ x: number; y: number; opacity: number; color: string }[]>([]);
   const packetProgress = useRef(0);
 
   if (!points || points.length < 2) return null;
 
-  // Smooth quadratic path
+  // Generate smooth quadratic path
   let pathD = `M ${points[0].x},${points[0].y}`;
   for (let i = 1; i < points.length; i++) {
     const prev = points[i - 1];
@@ -34,6 +45,8 @@ const PCBTrace: React.FC<PCBTraceProps> = ({ points, isActive, type, label }) =>
     }
   };
 
+  const getStageColor = () => stageColors[Math.min(currentStage, stageColors.length - 1)];
+
   useEffect(() => {
     if (!isActive) {
       packetProgress.current = 0;
@@ -50,13 +63,12 @@ const PCBTrace: React.FC<PCBTraceProps> = ({ points, isActive, type, label }) =>
       const pathLength = pathEl.getTotalLength();
       const point = pathEl.getPointAtLength(packetProgress.current * pathLength);
 
-      // Add to trail
+      // Add to trail with stage-based color
       setTrail(trail => {
-        const newTrail = [{ x: point.x, y: point.y, opacity: 1 }, ...trail];
-        return newTrail.slice(0, 25); // limit trail length
+        const newTrail = [{ x: point.x, y: point.y, opacity: 1, color: getStageColor() }, ...trail];
+        return newTrail.slice(0, 25);
       });
 
-      // Move packet forward
       packetProgress.current += 0.002; // controls speed
       if (packetProgress.current >= 1) {
         packetProgress.current = 0;
@@ -69,9 +81,8 @@ const PCBTrace: React.FC<PCBTraceProps> = ({ points, isActive, type, label }) =>
     animate();
 
     return () => cancelAnimationFrame(animationFrame);
-  }, [isActive]);
+  }, [isActive, currentStage]);
 
-  // Fade trail
   useEffect(() => {
     const fadeInterval = setInterval(() => {
       setTrail(trail => trail.map(t => ({ ...t, opacity: t.opacity * 0.85 })).filter(t => t.opacity > 0.05));
@@ -92,65 +103,39 @@ const PCBTrace: React.FC<PCBTraceProps> = ({ points, isActive, type, label }) =>
         ref={pathRef}
         d={pathD}
         stroke={getTraceColor()}
-        strokeWidth={14}
+        strokeWidth={4}
         fill="none"
         strokeLinecap="round"
         strokeLinejoin="round"
         opacity={isActive ? 1 : 0.2}
       />
 
-      {/* Glow trail */}
+      {/* Glow trail with stage-based color */}
       {trail.map((t, idx) => (
         <circle
           key={idx}
           cx={t.x}
           cy={t.y}
           r={6}
-          fill={getTraceColor()}
+          fill={t.color}
           opacity={t.opacity}
           filter="url(#glow)"
         />
       ))}
 
       {/* Moving packet */}
-      {isActive && (
-        <>
-          {type === 'data' ? (
-            <text
-              x={trail[0]?.x || 0}
-              y={trail[0]?.y || 0}
-              fill="white"
-              fontSize={12}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fontFamily="monospace"
-            >
-              {packetValue.toString().padStart(2, '0')}
-            </text>
-          ) : type === 'power' ? (
-            <text
-              x={trail[0]?.x || 0}
-              y={trail[0]?.y || 0}
-              fill="red"
-              fontSize={14}
-              textAnchor="middle"
-              dominantBaseline="middle"
-            >
-              🔋
-            </text>
-          ) : (
-            <text
-              x={trail[0]?.x || 0}
-              y={trail[0]?.y || 0}
-              fill="yellow"
-              fontSize={14}
-              textAnchor="middle"
-              dominantBaseline="middle"
-            >
-              🔑
-            </text>
-          )}
-        </>
+      {isActive && type === 'data' && (
+        <text
+          x={trail[0]?.x || 0}
+          y={trail[0]?.y || 0}
+          fill={getStageColor()}
+          fontSize={12}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fontFamily="monospace"
+        >
+          {packetValue.toString().padStart(2, '0')}
+        </text>
       )}
 
       {label && (
