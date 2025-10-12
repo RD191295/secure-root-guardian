@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 interface PCBTraceProps {
   points: { x: number; y: number }[];
@@ -8,11 +8,12 @@ interface PCBTraceProps {
 }
 
 const PCBTrace: React.FC<PCBTraceProps> = ({ points, isActive, type, label }) => {
+  const pathRef = useRef<SVGPathElement>(null);
+  const [packetPosition, setPacketPosition] = useState(0);
+  const [packetValue, setPacketValue] = useState<number>(Math.floor(Math.random() * 99));
+
+  // Smooth curved path
   if (!points || points.length < 2) return null;
-
-  const packetRef = useRef<SVGCircleElement | null>(null);
-
-  // Generate smooth path
   let pathD = `M ${points[0].x},${points[0].y}`;
   for (let i = 1; i < points.length; i++) {
     const prev = points[i - 1];
@@ -24,54 +25,103 @@ const PCBTrace: React.FC<PCBTraceProps> = ({ points, isActive, type, label }) =>
 
   const getTraceColor = () => {
     switch (type) {
-      case 'power': return '#ff4040';
+      case 'power': return '#ff4444';
       case 'data': return '#00ffff';
-      case 'control': return '#ffd700';
+      case 'control': return '#ffff55';
       default: return '#888';
     }
   };
 
-  // Animate the "data packet" along the path
+  // Animate packet (numbers move along trace)
   useEffect(() => {
-    if (!isActive || !packetRef.current) return;
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', pathD);
-    const length = path.getTotalLength();
-    let start = 0;
+    if (!isActive) {
+      setPacketPosition(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setPacketPosition(p => {
+        if (p >= 1) {
+          setPacketValue(Math.floor(Math.random() * 99)); // new random number
+          return 0;
+        }
+        return p + 0.01;
+      });
+    }, 50);
+    return () => clearInterval(interval);
+  }, [isActive]);
 
-    const move = () => {
-      if (packetRef.current) {
-        const point = path.getPointAtLength(start);
-        packetRef.current.setAttribute('cx', point.x.toString());
-        packetRef.current.setAttribute('cy', point.y.toString());
-        start = (start + 3) % length; // speed
-      }
-      requestAnimationFrame(move);
-    };
-
-    move();
-  }, [isActive, pathD]);
+  // Calculate position of packet on path
+  const packetPos = (() => {
+    if (!pathRef.current) return { x: 0, y: 0 };
+    const length = pathRef.current.getTotalLength();
+    const point = pathRef.current.getPointAtLength(length * packetPosition);
+    return { x: point.x, y: point.y };
+  })();
 
   return (
-    <g opacity={isActive ? 1 : 0.15}>
+    <g>
+      {/* Trace background */}
       <path
         d={pathD}
-        stroke="#333"
+        stroke="#222"
         strokeWidth={8}
         fill="none"
         strokeLinecap="round"
       />
+      {/* Main trace */}
       <path
+        ref={pathRef}
         d={pathD}
         stroke={getTraceColor()}
         strokeWidth={4}
         fill="none"
         strokeLinecap="round"
-        strokeDasharray={isActive ? "6 6" : "0"}
-        style={{
-          animation: isActive ? 'dash 1.2s linear infinite' : 'none'
-        }}
+        strokeLinejoin="round"
+        opacity={isActive ? 1 : 0.2}
       />
+
+      {/* Moving packet (shows number for data, icon for others) */}
+      {isActive && (
+        <>
+          {type === 'data' ? (
+            <text
+              x={packetPos.x}
+              y={packetPos.y}
+              fill="white"
+              fontSize={12}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fontFamily="monospace"
+            >
+              {packetValue.toString().padStart(2, '0')}
+            </text>
+          ) : type === 'power' ? (
+            <text
+              x={packetPos.x}
+              y={packetPos.y}
+              fill="red"
+              fontSize={14}
+              textAnchor="middle"
+              dominantBaseline="middle"
+            >
+              🔋
+            </text>
+          ) : (
+            <text
+              x={packetPos.x}
+              y={packetPos.y}
+              fill="yellow"
+              fontSize={14}
+              textAnchor="middle"
+              dominantBaseline="middle"
+            >
+              🔑
+            </text>
+          )}
+        </>
+      )}
+
+      {/* Label */}
       {label && (
         <text
           x={(points[0].x + points[points.length - 1].x) / 2}
@@ -82,17 +132,6 @@ const PCBTrace: React.FC<PCBTraceProps> = ({ points, isActive, type, label }) =>
         >
           {label}
         </text>
-      )}
-
-      {/* Animated data packet */}
-      {isActive && (
-        <circle
-          ref={packetRef}
-          r={6}
-          fill={getTraceColor()}
-          stroke="white"
-          strokeWidth={1.5}
-        />
       )}
     </g>
   );
