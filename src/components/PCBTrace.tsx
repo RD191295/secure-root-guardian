@@ -9,13 +9,13 @@ interface PCBTraceProps {
 
 const PCBTrace: React.FC<PCBTraceProps> = ({ points, isActive, type, label }) => {
   const pathRef = useRef<SVGPathElement>(null);
-  const [packetPosition, setPacketPosition] = useState(0);
-  const [packetValue, setPacketValue] = useState<number>(Math.floor(Math.random() * 99));
-  const [trailPositions, setTrailPositions] = useState<{ x: number; y: number; opacity: number }[]>([]);
+  const [packetValue, setPacketValue] = useState(Math.floor(Math.random() * 99));
+  const [trail, setTrail] = useState<{ x: number; y: number; opacity: number }[]>([]);
+  const packetProgress = useRef(0);
 
   if (!points || points.length < 2) return null;
 
-  // Smooth curved path
+  // Smooth quadratic path
   let pathD = `M ${points[0].x},${points[0].y}`;
   for (let i = 1; i < points.length; i++) {
     const prev = points[i - 1];
@@ -34,62 +34,65 @@ const PCBTrace: React.FC<PCBTraceProps> = ({ points, isActive, type, label }) =>
     }
   };
 
-  // Animate packet along the trace
   useEffect(() => {
     if (!isActive) {
-      setPacketPosition(0);
-      setTrailPositions([]);
+      packetProgress.current = 0;
+      setTrail([]);
       return;
     }
 
-    const interval = setInterval(() => {
-      setPacketPosition(p => {
-        let next = p + 0.01;
-        if (next >= 1) {
-          next = 0;
-          setPacketValue(Math.floor(Math.random() * 99));
-        }
-        return next;
-      });
+    let animationFrame: number;
 
-      // Add packet to trail
-      setTrailPositions(trail => {
-        const length = pathRef.current?.getTotalLength() || 1;
-        const point = pathRef.current?.getPointAtLength((length) * packetPosition) || { x: 0, y: 0 };
+    const animate = () => {
+      const pathEl = pathRef.current;
+      if (!pathEl) return;
+
+      const pathLength = pathEl.getTotalLength();
+      const point = pathEl.getPointAtLength(packetProgress.current * pathLength);
+
+      // Add to trail
+      setTrail(trail => {
         const newTrail = [{ x: point.x, y: point.y, opacity: 1 }, ...trail];
-        return newTrail.slice(0, 20); // keep trail length
+        return newTrail.slice(0, 25); // limit trail length
       });
-    }, 50);
 
-    return () => clearInterval(interval);
-  }, [isActive, packetPosition]);
+      // Move packet forward
+      packetProgress.current += 0.002; // controls speed
+      if (packetProgress.current >= 1) {
+        packetProgress.current = 0;
+        setPacketValue(Math.floor(Math.random() * 99));
+      }
+
+      animationFrame = requestAnimationFrame(animate);
+    };
+
+    animate();
+
+    return () => cancelAnimationFrame(animationFrame);
+  }, [isActive]);
 
   // Fade trail
   useEffect(() => {
     const fadeInterval = setInterval(() => {
-      setTrailPositions(trail =>
-        trail.map(t => ({ ...t, opacity: t.opacity * 0.85 })).filter(t => t.opacity > 0.05)
-      );
+      setTrail(trail => trail.map(t => ({ ...t, opacity: t.opacity * 0.85 })).filter(t => t.opacity > 0.05));
     }, 50);
     return () => clearInterval(fadeInterval);
   }, []);
 
   return (
     <g>
-      {/* Trace background */}
       <path
         d={pathD}
         stroke="#222"
-        strokeWidth={12}
+        strokeWidth={8}
         fill="none"
         strokeLinecap="round"
       />
-      {/* Main trace */}
       <path
         ref={pathRef}
         d={pathD}
         stroke={getTraceColor()}
-        strokeWidth={4}
+        strokeWidth={14}
         fill="none"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -97,7 +100,7 @@ const PCBTrace: React.FC<PCBTraceProps> = ({ points, isActive, type, label }) =>
       />
 
       {/* Glow trail */}
-      {trailPositions.map((t, idx) => (
+      {trail.map((t, idx) => (
         <circle
           key={idx}
           cx={t.x}
@@ -114,8 +117,8 @@ const PCBTrace: React.FC<PCBTraceProps> = ({ points, isActive, type, label }) =>
         <>
           {type === 'data' ? (
             <text
-              x={trailPositions[0]?.x || 0}
-              y={trailPositions[0]?.y || 0}
+              x={trail[0]?.x || 0}
+              y={trail[0]?.y || 0}
               fill="white"
               fontSize={12}
               textAnchor="middle"
@@ -126,8 +129,8 @@ const PCBTrace: React.FC<PCBTraceProps> = ({ points, isActive, type, label }) =>
             </text>
           ) : type === 'power' ? (
             <text
-              x={trailPositions[0]?.x || 0}
-              y={trailPositions[0]?.y || 0}
+              x={trail[0]?.x || 0}
+              y={trail[0]?.y || 0}
               fill="red"
               fontSize={14}
               textAnchor="middle"
@@ -137,8 +140,8 @@ const PCBTrace: React.FC<PCBTraceProps> = ({ points, isActive, type, label }) =>
             </text>
           ) : (
             <text
-              x={trailPositions[0]?.x || 0}
-              y={trailPositions[0]?.y || 0}
+              x={trail[0]?.x || 0}
+              y={trail[0]?.y || 0}
               fill="yellow"
               fontSize={14}
               textAnchor="middle"
@@ -150,7 +153,6 @@ const PCBTrace: React.FC<PCBTraceProps> = ({ points, isActive, type, label }) =>
         </>
       )}
 
-      {/* Optional label */}
       {label && (
         <text
           x={(points[0].x + points[points.length - 1].x) / 2}
