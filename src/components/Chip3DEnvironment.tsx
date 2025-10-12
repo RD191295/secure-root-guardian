@@ -15,7 +15,7 @@ export const Chip3DEnvironment: React.FC<Chip3DEnvironmentProps> = ({
   const [selectedModule, setSelectedModule] = useState<string | null>(null);
   const { registers, memory, flags } = useSecureBootState(mode, animationSpeed);
 
-  // Module activation based on stage
+  // Modules with active state
   const modules = useMemo(() => MODULES.map(m => {
     switch (m.id) {
       case 'pmu': return { ...m, isActive: flags.powerGood };
@@ -28,41 +28,20 @@ export const Chip3DEnvironment: React.FC<Chip3DEnvironmentProps> = ({
     }
   }), [flags, currentStage]);
 
-  // Compute traces with dynamic offsets
-  const traces = useMemo(() => {
-    const getModuleCenter = (id: string) => {
-      const mod = modules.find(m => m.id === id);
-      if (!mod) return { x: 0, y: 0 };
-      return {
-        x: mod.position.x + mod.size.width / 2,
-        y: mod.position.y + mod.size.height / 2
-      };
-    };
-
-    const baseTraces = [
-      { from: 'pmu', to: 'bootrom', active: currentStage >= 1, type: 'power', label: 'Power' },
-      { from: 'pmu', to: 'otp', active: currentStage >= 1, type: 'power', label: 'Power' },
-      { from: 'pmu', to: 'crypto', active: currentStage >= 1, type: 'power', label: 'Power' },
-      { from: 'pmu', to: 'flash', active: currentStage >= 1, type: 'power', label: 'Power' },
-      { from: 'pmu', to: 'cpu', active: currentStage >= 1, type: 'power', label: 'Power' },
-
-      { from: 'bootrom', to: 'otp', active: currentStage === 2, type: 'control', label: 'Key Request' },
-      { from: 'otp', to: 'crypto', active: currentStage === 4, type: 'data', label: 'Public Key' },
-      { from: 'flash', to: 'bootrom', active: currentStage === 3, type: 'data', label: 'Bootloader' },
-      { from: 'bootrom', to: 'crypto', active: currentStage === 4, type: 'data', label: 'Hash+Sig' },
-      { from: 'crypto', to: 'bootrom', active: currentStage === 5, type: 'control', label: mode === 'tampered' ? 'FAIL' : 'PASS' },
-      { from: 'bootrom', to: 'cpu', active: currentStage >= 6 && mode === 'normal', type: 'control', label: 'Boot' },
-    ];
-
-    // Map to actual coordinates with offsets
-    const offsetMap = { power: -6, data: 0, control: 6 };
-    return baseTraces.map(t => ({
-      ...t,
-      from: getModuleCenter(t.from),
-      to: getModuleCenter(t.to),
-      offset: offsetMap[t.type],
-    }));
-  }, [modules, currentStage, mode]);
+  // Manual traces to avoid overlap
+  const traces = useMemo(() => [
+    { points: [{ x: 215, y: 140 }, { x: 300, y: 140 }, { x: 600, y: 490 }], type: 'power', label: 'Power', active: currentStage >= 1 },
+    { points: [{ x: 215, y: 140 }, { x: 300, y: 140 }, { x: 320, y: 140 }, { x: 600, y: 140 }], type: 'power', label: 'Power', active: currentStage >= 1 },
+    { points: [{ x: 215, y: 140 }, { x: 270, y: 140 }, { x: 320, y: 140 }], type: 'power', label: 'Power', active: currentStage >= 1 },
+    { points: [{ x: 215, y: 140 }, { x: 70, y: 400 }], type: 'power', label: 'Power', active: currentStage >= 1 },
+    { points: [{ x: 215, y: 140 }, { x: 320, y: 320 }], type: 'power', label: 'Power', active: currentStage >= 1 },
+    { points: [{ x: 600, y: 490 }, { x: 600, y: 140 }], type: 'control', label: 'Key Request', active: currentStage === 2 },
+    { points: [{ x: 600, y: 140 }, { x: 470, y: 140 }, { x: 400, y: 140 }], type: 'data', label: 'Public Key', active: currentStage === 4 },
+    { points: [{ x: 70, y: 400 }, { x: 190, y: 400 }, { x: 320, y: 320 }], type: 'data', label: 'Bootloader', active: currentStage === 3 },
+    { points: [{ x: 600, y: 490 }, { x: 520, y: 200 }, { x: 400, y: 140 }], type: 'data', label: 'Hash+Sig', active: currentStage === 4 },
+    { points: [{ x: 400, y: 140 }, { x: 520, y: 200 }, { x: 600, y: 490 }], type: 'control', label: mode === 'tampered' ? 'FAIL' : 'PASS', active: currentStage === 5 },
+    { points: [{ x: 600, y: 490 }, { x: 470, y: 400 }, { x: 320, y: 320 }], type: 'control', label: 'Boot', active: currentStage >= 6 && mode === 'normal' },
+  ], [currentStage, mode]);
 
   const bootStatus = getBootStatus(flags, mode, currentStage);
 
@@ -78,15 +57,11 @@ export const Chip3DEnvironment: React.FC<Chip3DEnvironmentProps> = ({
         zIndex: Z_INDEX.BACKGROUND
       }} />
 
-      {/* PCB Container */}
+      {/* Main PCB container */}
       <div className="absolute inset-0 flex items-center justify-center p-8">
         <div className="relative" style={{ width: '700px', height: '500px' }}>
-          {/* SVG Traces */}
-          <svg
-            className="absolute inset-0 pointer-events-none"
-            style={{ width: '100%', height: '100%', zIndex: Z_INDEX.PCB_TRACES }}
-            viewBox="0 0 700 500"
-          >
+          {/* PCB traces */}
+          <svg className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: Z_INDEX.PCB_TRACES }} viewBox="0 0 700 500">
             <defs>
               <filter id="glow">
                 <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
@@ -96,20 +71,12 @@ export const Chip3DEnvironment: React.FC<Chip3DEnvironmentProps> = ({
                 </feMerge>
               </filter>
             </defs>
-
             {traces.map((trace, idx) => (
-              <PCBTrace
-                key={idx}
-                points={[trace.from, trace.to]}
-                isActive={trace.active}
-                type={trace.type}
-                label={trace.label}
-                offset={trace.offset}
-              />
+              <PCBTrace key={idx} points={trace.points} type={trace.type} label={trace.label} isActive={trace.active} />
             ))}
           </svg>
 
-          {/* Modules */}
+          {/* Chip modules */}
           <div className="absolute inset-0">
             {modules.map(module => (
               <ChipModule
@@ -128,7 +95,7 @@ export const Chip3DEnvironment: React.FC<Chip3DEnvironmentProps> = ({
         </div>
       </div>
 
-      {/* Module Popup */}
+      {/* Module popup */}
       {selectedModule && (
         <ModulePopup
           moduleId={selectedModule}
@@ -142,7 +109,7 @@ export const Chip3DEnvironment: React.FC<Chip3DEnvironmentProps> = ({
         />
       )}
 
-      {/* Boot Status */}
+      {/* Boot status overlay */}
       <div className="absolute top-4 left-1/2 transform -translate-x-1/2" style={{ zIndex: Z_INDEX.OVERLAYS }}>
         <div className={`px-6 py-3 rounded-lg text-white font-semibold shadow-lg ${bootStatus.color}`}>
           {bootStatus.text}
