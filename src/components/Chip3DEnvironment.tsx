@@ -15,6 +15,7 @@ export const Chip3DEnvironment: React.FC<Chip3DEnvironmentProps> = ({
   const [selectedModule, setSelectedModule] = useState<string | null>(null);
   const { registers, memory, flags } = useSecureBootState(mode, animationSpeed);
 
+  // Module activation based on stage
   const modules = useMemo(() => MODULES.map(m => {
     switch (m.id) {
       case 'pmu': return { ...m, isActive: flags.powerGood };
@@ -27,33 +28,39 @@ export const Chip3DEnvironment: React.FC<Chip3DEnvironmentProps> = ({
     }
   }), [flags, currentStage]);
 
+  // Compute traces with dynamic offsets
   const traces = useMemo(() => {
     const getModuleCenter = (id: string) => {
       const mod = modules.find(m => m.id === id);
       if (!mod) return { x: 0, y: 0 };
       return {
-        x: mod.position.x + mod.size.width/2,
-        y: mod.position.y + mod.size.height/2
+        x: mod.position.x + mod.size.width / 2,
+        y: mod.position.y + mod.size.height / 2
       };
     };
 
-    return [
-      { from: 'pmu', to: 'bootrom', active: currentStage >= 1, type: 'power' as const, label: 'Power' },
-      { from: 'pmu', to: 'otp', active: currentStage >= 1, type: 'power' as const, label: 'Power' },
-      { from: 'pmu', to: 'crypto', active: currentStage >= 1, type: 'power' as const, label: 'Power' },
-      { from: 'pmu', to: 'flash', active: currentStage >= 1, type: 'power' as const, label: 'Power' },
-      { from: 'pmu', to: 'cpu', active: currentStage >= 1, type: 'power' as const, label: 'Power' },
+    const baseTraces = [
+      { from: 'pmu', to: 'bootrom', active: currentStage >= 1, type: 'power', label: 'Power' },
+      { from: 'pmu', to: 'otp', active: currentStage >= 1, type: 'power', label: 'Power' },
+      { from: 'pmu', to: 'crypto', active: currentStage >= 1, type: 'power', label: 'Power' },
+      { from: 'pmu', to: 'flash', active: currentStage >= 1, type: 'power', label: 'Power' },
+      { from: 'pmu', to: 'cpu', active: currentStage >= 1, type: 'power', label: 'Power' },
 
-      { from: 'bootrom', to: 'otp', active: currentStage === 2, type: 'control' as const, label: 'Key Request' },
-      { from: 'otp', to: 'crypto', active: currentStage === 4, type: 'data' as const, label: 'Public Key' },
-      { from: 'flash', to: 'bootrom', active: currentStage === 3, type: 'data' as const, label: 'Bootloader' },
-      { from: 'bootrom', to: 'crypto', active: currentStage === 4, type: 'data' as const, label: 'Hash+Sig' },
-      { from: 'crypto', to: 'bootrom', active: currentStage === 5, type: 'control' as const, label: mode === 'tampered' ? 'FAIL' : 'PASS' },
-      { from: 'bootrom', to: 'cpu', active: currentStage >= 6 && mode === 'normal', type: 'control' as const, label: 'Boot' },
-    ].map(t => ({
+      { from: 'bootrom', to: 'otp', active: currentStage === 2, type: 'control', label: 'Key Request' },
+      { from: 'otp', to: 'crypto', active: currentStage === 4, type: 'data', label: 'Public Key' },
+      { from: 'flash', to: 'bootrom', active: currentStage === 3, type: 'data', label: 'Bootloader' },
+      { from: 'bootrom', to: 'crypto', active: currentStage === 4, type: 'data', label: 'Hash+Sig' },
+      { from: 'crypto', to: 'bootrom', active: currentStage === 5, type: 'control', label: mode === 'tampered' ? 'FAIL' : 'PASS' },
+      { from: 'bootrom', to: 'cpu', active: currentStage >= 6 && mode === 'normal', type: 'control', label: 'Boot' },
+    ];
+
+    // Map to actual coordinates with offsets
+    const offsetMap = { power: -6, data: 0, control: 6 };
+    return baseTraces.map(t => ({
       ...t,
       from: getModuleCenter(t.from),
-      to: getModuleCenter(t.to)
+      to: getModuleCenter(t.to),
+      offset: offsetMap[t.type],
     }));
   }, [modules, currentStage, mode]);
 
@@ -61,7 +68,7 @@ export const Chip3DEnvironment: React.FC<Chip3DEnvironmentProps> = ({
 
   return (
     <div className="w-full h-full bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 relative overflow-hidden">
-      {/* PCB Background Pattern */}
+      {/* PCB Background */}
       <div className="absolute inset-0 opacity-10 pointer-events-none" style={{
         backgroundImage: `
           linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px),
@@ -71,10 +78,10 @@ export const Chip3DEnvironment: React.FC<Chip3DEnvironmentProps> = ({
         zIndex: Z_INDEX.BACKGROUND
       }} />
 
-      {/* Main PCB Container */}
+      {/* PCB Container */}
       <div className="absolute inset-0 flex items-center justify-center p-8">
         <div className="relative" style={{ width: '700px', height: '500px' }}>
-          {/* SVG Layer for PCB Traces */}
+          {/* SVG Traces */}
           <svg
             className="absolute inset-0 pointer-events-none"
             style={{ width: '100%', height: '100%', zIndex: Z_INDEX.PCB_TRACES }}
@@ -90,27 +97,19 @@ export const Chip3DEnvironment: React.FC<Chip3DEnvironmentProps> = ({
               </filter>
             </defs>
 
-           {traces.map((trace, idx) => (
+            {traces.map((trace, idx) => (
               <PCBTrace
                 key={idx}
                 points={[trace.from, trace.to]}
                 isActive={trace.active}
                 type={trace.type}
                 label={trace.label}
+                offset={trace.offset}
               />
             ))}
-            
-            <defs>
-              <linearGradient id="flow-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="white" stopOpacity="0" />
-                <stop offset="50%" stopColor="white" stopOpacity="1" />
-                <stop offset="100%" stopColor="white" stopOpacity="0" />
-              </linearGradient>
-            </defs>
-
           </svg>
 
-          {/* Chip Modules Layer */}
+          {/* Modules */}
           <div className="absolute inset-0">
             {modules.map(module => (
               <ChipModule
