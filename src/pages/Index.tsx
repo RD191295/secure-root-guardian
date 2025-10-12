@@ -162,12 +162,13 @@ const Index = () => {
           <svg
             width="100%"
             height="100%"
-            className="absolute inset-0"
+            className="absolute inset-0 pointer-events-auto"
+            style={{ zIndex: Z_INDEX.PCB_TRACES + 1 }}
             onClick={handleCanvasClick}
           >
             {/* Existing PCB Traces */}
             {pcbTraces.map((trace, i) => (
-              <PCBTrace key={i} points={trace.points} type={trace.type} isActive />
+              <PCBTrace key={i} points={trace.points} type={trace.type} isActive label={trace.label} />
             ))}
 
             {/* Current Drawing */}
@@ -177,7 +178,7 @@ const Index = () => {
 
             {/* Visual nodes */}
             {currentPoints.map((pt, idx) => (
-              <circle key={idx} cx={pt.x} cy={pt.y} r={4} fill="orange" />
+              <circle key={idx} cx={pt.x} cy={pt.y} r={6} fill="orange" stroke="white" strokeWidth={2} />
             ))}
           </svg>
         </div>
