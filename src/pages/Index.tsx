@@ -153,6 +153,7 @@ const Index = () => {
           {/* 3D Environment */}
           <Chip3DEnvironment
             mode={mode}
+            showInternals={false}
             animationSpeed={animationSpeed}
             currentStage={currentStage}
           />

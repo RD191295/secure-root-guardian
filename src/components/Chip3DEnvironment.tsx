@@ -93,8 +93,7 @@ export const Chip3DEnvironment: React.FC<Chip3DEnvironmentProps> = ({
             {traces.map((trace, idx) => (
               <PCBTrace
                 key={idx}
-                from={trace.from}
-                to={trace.to}
+                points={[trace.from, trace.to]}
                 isActive={trace.active}
                 type={trace.type}
                 label={trace.label}
