@@ -90,7 +90,7 @@ export const Chip3DEnvironment: React.FC<Chip3DEnvironmentProps> = ({
               </filter>
             </defs>
 
-            {traces.map((trace, idx) => (
+           {traces.map((trace, idx) => (
               <PCBTrace
                 key={idx}
                 points={[trace.from, trace.to]}
@@ -99,6 +99,15 @@ export const Chip3DEnvironment: React.FC<Chip3DEnvironmentProps> = ({
                 label={trace.label}
               />
             ))}
+            
+            <defs>
+              <linearGradient id="flow-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="white" stopOpacity="0" />
+                <stop offset="50%" stopColor="white" stopOpacity="1" />
+                <stop offset="100%" stopColor="white" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+
           </svg>
 
           {/* Chip Modules Layer */}
