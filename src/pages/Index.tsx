@@ -159,28 +159,46 @@ const Index = () => {
           />
 
           {/* Overlay SVG for PCB Drawing */}
-          <svg
-            width="100%"
-            height="100%"
-            className="absolute inset-0 pointer-events-auto"
-            style={{ zIndex: Z_INDEX.PCB_TRACES + 1 }}
-            onClick={handleCanvasClick}
-          >
-            {/* Existing PCB Traces */}
-            {pcbTraces.map((trace, i) => (
-              <PCBTrace key={i} points={trace.points} type={trace.type} isActive label={trace.label} />
-            ))}
+          {isDrawing && (
+            <svg
+              className="absolute top-0 left-0 w-full h-full pointer-events-auto"
+              style={{ zIndex: Z_INDEX.OVERLAYS }}
+              onClick={handleCanvasClick}
+              preserveAspectRatio="none"
+            >
+              {/* Current Drawing */}
+              {currentPoints.length > 0 && (
+                <PCBTrace points={currentPoints} type="data" isActive />
+              )}
 
-            {/* Current Drawing */}
-            {currentPoints.length > 0 && (
-              <PCBTrace points={currentPoints} type="data" isActive />
-            )}
+              {/* Visual nodes */}
+              {currentPoints.map((pt, idx) => (
+                <circle 
+                  key={idx} 
+                  cx={pt.x} 
+                  cy={pt.y} 
+                  r={8} 
+                  fill="#ff6b35" 
+                  stroke="white" 
+                  strokeWidth={3}
+                  style={{ filter: 'drop-shadow(0 0 4px rgba(255, 107, 53, 0.8))' }}
+                />
+              ))}
+            </svg>
+          )}
 
-            {/* Visual nodes */}
-            {currentPoints.map((pt, idx) => (
-              <circle key={idx} cx={pt.x} cy={pt.y} r={6} fill="orange" stroke="white" strokeWidth={2} />
-            ))}
-          </svg>
+          {/* Drawn PCB Traces - always visible */}
+          {pcbTraces.length > 0 && (
+            <svg
+              className="absolute top-0 left-0 w-full h-full pointer-events-none"
+              style={{ zIndex: Z_INDEX.PCB_TRACES }}
+              preserveAspectRatio="none"
+            >
+              {pcbTraces.map((trace, i) => (
+                <PCBTrace key={i} points={trace.points} type={trace.type} isActive label={trace.label} />
+              ))}
+            </svg>
+          )}
         </div>
       </div>
     </div>
