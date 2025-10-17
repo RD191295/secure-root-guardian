@@ -13,7 +13,7 @@ function bufToHex(buffer: ArrayBuffer) {
   return Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-async function sha256(data: Uint8Array) {
+async function sha256(data: BufferSource) {
   return await crypto.subtle.digest("SHA-256", data);
 }
 
