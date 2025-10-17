@@ -30,36 +30,47 @@ export const Chip3DEnvironment: React.FC<Chip3DEnvironmentProps> = ({
   }), [flags, currentStage]);
 
   // Comprehensive traces showing module interactions
+  // Module centers: PMU(110,140), Crypto(400,140), OTP(670,140), Flash(75,495), CPU(400,410), ROM(670,490)
   const traces = useMemo(() => [
-    // Power traces (Stage 0-1: Power distribution)
-    { points: [{ x: 110, y: 140 }, { x: 320, y: 140 }], type: 'power' as const, label: 'VCC', active: currentStage >= 1 },
-    { points: [{ x: 320, y: 130 }, { x: 480, y: 130 }], type: 'power' as const, label: 'VCC', active: currentStage >= 1 },
-    { points: [{ x: 480, y: 130 }, { x: 600, y: 130 }], type: 'power' as const, label: 'VCC', active: currentStage >= 1 },
-    { points: [{ x: 320, y: 150 }, { x: 340, y: 150 }, { x: 340, y: 400 }, { x: 400, y: 400 }], type: 'power' as const, label: 'VCC', active: currentStage >= 1 },
-    { points: [{ x: 110, y: 500 }, { x: 110, y: 400 }], type: 'power' as const, label: 'VCC', active: currentStage >= 1 },
-    { points: [{ x: 670, y: 490 }, { x: 670, y: 400 }], type: 'power' as const, label: 'VCC', active: currentStage >= 1 },
+    // ===== Power Distribution (Stage 0-1) =====
+    // PMU to Crypto Engine
+    { points: [{ x: 215, y: 140 }, { x: 320, y: 140 }], type: 'power' as const, label: 'VCC', active: currentStage >= 1 },
+    // PMU to Flash (via left edge)
+    { points: [{ x: 110, y: 230 }, { x: 110, y: 400 }, { x: 75, y: 400 }], type: 'power' as const, label: 'VCC', active: currentStage >= 1 },
+    // Crypto to OTP
+    { points: [{ x: 480, y: 140 }, { x: 600, y: 140 }], type: 'power' as const, label: 'VCC', active: currentStage >= 1 },
+    // Crypto to CPU
+    { points: [{ x: 400, y: 230 }, { x: 400, y: 320 }], type: 'power' as const, label: 'VCC', active: currentStage >= 1 },
+    // OTP to ROM
+    { points: [{ x: 670, y: 230 }, { x: 670, y: 400 }], type: 'power' as const, label: 'VCC', active: currentStage >= 1 },
 
-    // Stage 1-2: ROM to OTP communication (key retrieval)
-    { points: [{ x: 670, y: 150 }, { x: 670, y: 280 }, { x: 670, y: 400 }], type: 'control' as const, label: 'KEY_REQ', active: currentStage >= 2 && currentStage <= 3 },
+    // ===== Stage 2: Boot ROM requests Key from OTP =====
+    { points: [{ x: 655, y: 400 }, { x: 655, y: 230 }], type: 'control' as const, label: 'KEY_REQ', active: currentStage >= 2 && currentStage <= 2 },
     
-    // Stage 2-3: OTP responds with key data
-    { points: [{ x: 650, y: 150 }, { x: 650, y: 280 }, { x: 650, y: 400 }], type: 'data' as const, label: 'KEY_DATA', active: currentStage >= 2 && currentStage <= 3 },
+    // ===== Stage 2-3: OTP responds with Key Hash =====
+    { points: [{ x: 685, y: 230 }, { x: 685, y: 400 }], type: 'data' as const, label: 'KEY_HASH', active: currentStage >= 2 && currentStage <= 3 },
 
-    // Stage 3: Flash to CPU (bootloader load)
-    { points: [{ x: 145, y: 490 }, { x: 280, y: 490 }, { x: 280, y: 430 }, { x: 320, y: 430 }], type: 'data' as const, label: 'BOOT_DATA', active: currentStage >= 3 && currentStage <= 4 },
-    { points: [{ x: 400, y: 430 }, { x: 280, y: 430 }, { x: 280, y: 510 }, { x: 145, y: 510 }], type: 'control' as const, label: 'FLASH_RD', active: currentStage >= 3 && currentStage <= 4 },
+    // ===== Stage 3: ROM requests Bootloader from Flash =====
+    { points: [{ x: 600, y: 490 }, { x: 240, y: 490 }, { x: 240, y: 520 }, { x: 145, y: 520 }], type: 'control' as const, label: 'FLASH_RD', active: currentStage >= 3 && currentStage <= 3 },
+    
+    // ===== Stage 3: Flash sends Bootloader data =====
+    { points: [{ x: 145, y: 470 }, { x: 260, y: 470 }, { x: 260, y: 510 }, { x: 600, y: 510 }], type: 'data' as const, label: 'BOOT_IMG', active: currentStage >= 3 && currentStage <= 4 },
 
-    // Stage 4: Crypto verification
-    // ROM to Crypto: send public key
-    { points: [{ x: 600, y: 450 }, { x: 540, y: 450 }, { x: 540, y: 280 }, { x: 480, y: 280 }, { x: 480, y: 150 }], type: 'data' as const, label: 'PUB_KEY', active: currentStage >= 4 && currentStage <= 5 },
-    // Flash to Crypto: send signature
-    { points: [{ x: 145, y: 450 }, { x: 200, y: 450 }, { x: 200, y: 280 }, { x: 320, y: 280 }, { x: 320, y: 230 }], type: 'data' as const, label: 'SIGNATURE', active: currentStage >= 4 && currentStage <= 5 },
-    // Crypto to ROM: verification result
-    { points: [{ x: 400, y: 180 }, { x: 520, y: 180 }, { x: 520, y: 400 }], type: 'control' as const, label: mode === 'tampered' ? 'VERIFY_FAIL' : 'VERIFY_OK', active: currentStage === 5 },
+    // ===== Stage 4: ROM sends Public Key to Crypto =====
+    { points: [{ x: 600, y: 470 }, { x: 520, y: 470 }, { x: 520, y: 260 }, { x: 480, y: 260 }, { x: 480, y: 230 }], type: 'data' as const, label: 'PUB_KEY', active: currentStage >= 4 && currentStage <= 5 },
+    
+    // ===== Stage 4: Flash sends Signature to Crypto =====
+    { points: [{ x: 145, y: 450 }, { x: 220, y: 450 }, { x: 220, y: 200 }, { x: 320, y: 200 }], type: 'data' as const, label: 'SIGNATURE', active: currentStage >= 4 && currentStage <= 5 },
+    
+    // ===== Stage 4-5: Crypto processes and sends result =====
+    { points: [{ x: 480, y: 140 }, { x: 540, y: 140 }, { x: 540, y: 450 }, { x: 600, y: 450 }], type: 'control' as const, label: mode === 'tampered' ? 'FAIL' : 'PASS', active: currentStage >= 5 && currentStage <= 5 },
 
-    // Stage 6-7: CPU active, running code
-    { points: [{ x: 400, y: 400 }, { x: 450, y: 400 }, { x: 450, y: 320 }], type: 'control' as const, label: 'EXEC', active: currentStage >= 6 },
-    { points: [{ x: 320, y: 320 }, { x: 280, y: 320 }, { x: 280, y: 560 }, { x: 110, y: 560 }], type: 'data' as const, label: mode === 'tampered' ? 'SAFE_MODE' : 'OS_DATA', active: currentStage >= 6 },
+    // ===== Stage 5-6: ROM transfers control to CPU =====
+    { points: [{ x: 600, y: 430 }, { x: 550, y: 430 }, { x: 550, y: 410 }, { x: 480, y: 410 }], type: 'control' as const, label: mode === 'tampered' ? 'HALT' : 'JUMP', active: currentStage >= 6 && currentStage <= 6 },
+
+    // ===== Stage 6-7: CPU runs, accesses Flash =====
+    { points: [{ x: 320, y: 450 }, { x: 200, y: 450 }, { x: 200, y: 495 }, { x: 145, y: 495 }], type: 'control' as const, label: 'MEM_RD', active: currentStage >= 7 },
+    { points: [{ x: 145, y: 510 }, { x: 180, y: 510 }, { x: 180, y: 470 }, { x: 320, y: 470 }], type: 'data' as const, label: mode === 'tampered' ? 'SAFE' : 'OS_CODE', active: currentStage >= 7 },
   ], [currentStage, mode]);
 
   const bootStatus = getBootStatus(flags, mode, currentStage);
