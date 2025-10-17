@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 interface PCBTraceProps {
   points: { x: number; y: number }[];
@@ -9,6 +9,8 @@ interface PCBTraceProps {
 }
 
 const PCBTrace: React.FC<PCBTraceProps> = ({ points, isActive, type, label, offset = 0 }) => {
+  const [isHovered, setIsHovered] = useState(false);
+  
   if (!points || points.length < 2) return null;
 
   // Smooth quadratic path with offset
@@ -22,43 +24,118 @@ const PCBTrace: React.FC<PCBTraceProps> = ({ points, isActive, type, label, offs
   }
 
   const getTraceColor = () => {
+    if (!isActive) return '#555';
     switch (type) {
-      case 'power': return 'red';
-      case 'data': return 'cyan';
-      case 'control': return 'yellow';
-      default: return 'gray';
+      case 'power': return '#ef4444'; // red
+      case 'data': return '#06b6d4'; // cyan
+      case 'control': return '#eab308'; // yellow
+      default: return '#6b7280'; // gray
     }
+  };
+
+  const getTraceWidth = () => {
+    return isHovered ? 6 : 4;
   };
 
   return (
     <g>
+      {/* Invisible wider path for easier hover detection */}
       <path
         d={pathD}
-        stroke="#555"
+        stroke="transparent"
+        strokeWidth={20}
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        style={{ cursor: 'pointer' }}
+      />
+      
+      {/* Base trace (darker background) */}
+      <path
+        d={pathD}
+        stroke="#333"
         strokeWidth={8}
         fill="none"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+      
+      {/* Active trace with glow */}
       <path
         d={pathD}
         stroke={getTraceColor()}
-        strokeWidth={4}
+        strokeWidth={getTraceWidth()}
         fill="none"
         strokeLinecap="round"
         strokeLinejoin="round"
-        style={{ filter: isActive ? 'url(#glow)' : 'none' }}
+        style={{ 
+          filter: isActive ? 'url(#glow)' : 'none',
+          transition: 'all 0.3s ease-out'
+        }}
       />
-      {label && (
-        <text
-          x={(points[0].x + points[points.length - 1].x) / 2}
-          y={(points[0].y + points[points.length - 1].y) / 2 - 10 + offset}
-          fill="white"
-          fontSize={12}
-          textAnchor="middle"
-        >
-          {label}
-        </text>
+      
+      {/* Label */}
+      {label && isActive && (
+        <g>
+          {/* Label background for better readability */}
+          <rect
+            x={(points[0].x + points[points.length - 1].x) / 2 - 30}
+            y={(points[0].y + points[points.length - 1].y) / 2 - 18 + offset}
+            width={60}
+            height={16}
+            fill="rgba(0, 0, 0, 0.8)"
+            rx={4}
+            opacity={isHovered ? 1 : 0.7}
+          />
+          <text
+            x={(points[0].x + points[points.length - 1].x) / 2}
+            y={(points[0].y + points[points.length - 1].y) / 2 - 8 + offset}
+            fill={getTraceColor()}
+            fontSize={10}
+            fontWeight="bold"
+            textAnchor="middle"
+            style={{ transition: 'all 0.3s ease-out' }}
+          >
+            {label}
+          </text>
+        </g>
+      )}
+      
+      {/* Tooltip on hover */}
+      {isHovered && isActive && (
+        <g>
+          <rect
+            x={(points[0].x + points[points.length - 1].x) / 2 - 50}
+            y={(points[0].y + points[points.length - 1].y) / 2 + 10 + offset}
+            width={100}
+            height={30}
+            fill="rgba(0, 0, 0, 0.95)"
+            rx={6}
+            stroke={getTraceColor()}
+            strokeWidth={2}
+          />
+          <text
+            x={(points[0].x + points[points.length - 1].x) / 2}
+            y={(points[0].y + points[points.length - 1].y) / 2 + 24 + offset}
+            fill="white"
+            fontSize={9}
+            fontWeight="bold"
+            textAnchor="middle"
+          >
+            {type.toUpperCase()} BUS
+          </text>
+          <text
+            x={(points[0].x + points[points.length - 1].x) / 2}
+            y={(points[0].y + points[points.length - 1].y) / 2 + 34 + offset}
+            fill={getTraceColor()}
+            fontSize={8}
+            textAnchor="middle"
+          >
+            {label}
+          </text>
+        </g>
       )}
     </g>
   );

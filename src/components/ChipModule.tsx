@@ -111,12 +111,13 @@ const ChipModule: React.FC<ChipModuleProps> = ({
 
   return (
     <div
-      className="absolute cursor-pointer transition-all duration-300 ease-out"
+      className={`absolute cursor-pointer transition-all duration-300 ease-out ${isActive ? 'animate-pulse' : ''}`}
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,
-        transform: isHovered ? 'scale(1.05)' : 'scale(1)',
-        zIndex: isHovered ? Z_INDEX.CHIP_MODULES_HOVER : Z_INDEX.CHIP_MODULES
+        transform: isHovered ? 'scale(1.08) translateY(-4px)' : 'scale(1)',
+        zIndex: isHovered ? Z_INDEX.CHIP_MODULES_HOVER : Z_INDEX.CHIP_MODULES,
+        filter: isHovered ? 'brightness(1.2)' : 'brightness(1)'
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -127,8 +128,7 @@ const ChipModule: React.FC<ChipModuleProps> = ({
         className={`
           relative bg-gradient-to-br ${color} rounded-xl border-2
           ${getStatusGlow()}
-          backdrop-blur-sm overflow-hidden
-          ${isActive ? 'animate-pulse' : ''}
+          backdrop-blur-sm overflow-hidden transition-all duration-300
         `}
         style={{
           width: `${size.width}px`,
